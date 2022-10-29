@@ -126,7 +126,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 stop:0 #fff, stop:1 #ddd);
             border: 1px solid #444;
             border-radius: 7px;
-            
             }
             
             QSlider::sub-page:horizontal:disabled {
@@ -200,19 +199,43 @@ class MainWindow(QtWidgets.QMainWindow):
         global viewer
         viewer.bvh_renderer.cur_frame = frame
         self.time_input.setText(str(frame))
-        
+
     def keyPressEvent(self, event):
         global viewer
-        
-        if event.key() == QtCore.Qt.Key_R:
+        focused_widget = QtWidgets.QApplication.focusWidget()
+        if isinstance(focused_widget, QtWidgets.QLineEdit):
+            focused_widget.clearFocus()
+        if event.key() == QtCore.Qt.Key_Space:
             viewer.bvh_renderer.start_or_stop_animation()
         elif event.key() == QtCore.Qt.Key_V:
             viewer.camera_controller.flip_projection()
-            
+        elif event.key() == QtCore.Qt.Key_I:
+            frame = QtWidgets.QInputDialog.getInt(self, 'Inverse Kinematics', "Enter a frame #")
+            viewer.bvh_renderer.set_key_frame(frame)
+        elif event.key() == QtCore.Qt.Key_W: # Back
+            print("back!!")
+            viewer.bvh_renderer.move_pointer([0, -1, 0])
+        elif event.key() == QtCore.Qt.Key_S: # Front
+            print("front!!")
+            viewer.bvh_renderer.move_pointer([0, 1, 0])
+        elif event.key() == QtCore.Qt.Key_A: # Left
+            print("left!!")
+            viewer.bvh_renderer.move_pointer([-1, 0, 0])
+        elif event.key() == QtCore.Qt.Key_D: # Right
+            print("right!!")
+            viewer.bvh_renderer.move_pointer([1, 0, 0])
+        elif event.key() == QtCore.Qt.Key_Q: # Up
+            print("up!!")
+            viewer.bvh_renderer.move_pointer([0, 0, 1])
+        elif event.key() == QtCore.Qt.Key_E: # Down
+            print("down!!")
+            viewer.bvh_renderer.move_pointer([0, 0, -1])
+
+
     def wheelEvent(self, event):
-        yoffset = 0.005 * event.angleDelta().y()
+        y_offset = 0.005 * event.angleDelta().y()
         global viewer
-        viewer.camera_controller.zoom(yoffset)
+        viewer.camera_controller.zoom(y_offset)
         
 
     def mousePressEvent(self, event):
@@ -252,7 +275,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         file_name = [u.toLocalFile() for u in event.mimeData().urls()][0]
         viewer.bvh_renderer.set_bvh(BvhMotion(file_name))
-        viewer.bvh_renderer.animating_mode = False
         
         self.time_slider.setRange(0, viewer.bvh_renderer.get_frame_num()-1)
         self.frame_timer.stop()
