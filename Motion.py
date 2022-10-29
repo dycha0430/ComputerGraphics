@@ -45,10 +45,12 @@ class BvhMotion(Motion, metaclass=ABCMeta):
         file_name = self.name.split('\\')[-1]
         extension = file_name.split('.')[-1]
         if extension != 'bvh':
+            '''
             global win
             self.name = ""
             if win:
                 win.show_alert("Drag and drop only .bvh file")
+            '''
             return False
         f = open(self.name, 'r')
         lines = f.readlines()
@@ -113,6 +115,7 @@ class BvhMotion(Motion, metaclass=ABCMeta):
 
                 self.push_joint(cur_joint)
 
+        self.print_info()
         return True
 
     def print_info(self):

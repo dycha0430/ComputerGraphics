@@ -202,6 +202,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def keyPressEvent(self, event):
         global viewer
+
+        ik_factor = 0.05
+
         focused_widget = QtWidgets.QApplication.focusWidget()
         if isinstance(focused_widget, QtWidgets.QLineEdit):
             focused_widget.clearFocus()
@@ -214,22 +217,22 @@ class MainWindow(QtWidgets.QMainWindow):
             viewer.bvh_renderer.set_key_frame(frame)
         elif event.key() == QtCore.Qt.Key_W: # Back
             print("back!!")
-            viewer.bvh_renderer.move_pointer([0, -1, 0])
+            viewer.bvh_renderer.move_end_effector([0, -ik_factor, 0])
         elif event.key() == QtCore.Qt.Key_S: # Front
             print("front!!")
-            viewer.bvh_renderer.move_pointer([0, 1, 0])
+            viewer.bvh_renderer.move_end_effector([0, ik_factor, 0])
         elif event.key() == QtCore.Qt.Key_A: # Left
             print("left!!")
-            viewer.bvh_renderer.move_pointer([-1, 0, 0])
+            viewer.bvh_renderer.move_end_effector([-ik_factor, 0, 0])
         elif event.key() == QtCore.Qt.Key_D: # Right
             print("right!!")
-            viewer.bvh_renderer.move_pointer([1, 0, 0])
+            viewer.bvh_renderer.move_end_effector([ik_factor, 0, 0])
         elif event.key() == QtCore.Qt.Key_Q: # Up
             print("up!!")
-            viewer.bvh_renderer.move_pointer([0, 0, 1])
+            viewer.bvh_renderer.move_end_effector([0, 0, ik_factor])
         elif event.key() == QtCore.Qt.Key_E: # Down
             print("down!!")
-            viewer.bvh_renderer.move_pointer([0, 0, -1])
+            viewer.bvh_renderer.move_end_effector([0, 0, -ik_factor])
 
 
     def wheelEvent(self, event):
