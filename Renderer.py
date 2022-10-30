@@ -64,8 +64,7 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
 
         self.key_frame = -1
         self.joint_idx = -1
-        self.key_joints = {'a': KeyJoint("RightForeArm"), 'b': KeyJoint("RightHand"), 'c': KeyJoint(),
-                           'c_prime': KeyJoint(), 't': KeyJoint()}
+        self.key_joints = {'a': KeyJoint("RightForeArm"), 'b': KeyJoint("RightHand"), 'c': KeyJoint(), 't': KeyJoint(), 'c_prime': KeyJoint()}
         self.global_axis = [0, 0, 0]
 
     def get_bvh(self):
@@ -103,7 +102,7 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         for key in self.key_joints:
             self.key_joints[key].reset()
 
-        self.set_key_frame_infos(self.save_key_frame_infos)
+        self.set_key_frame_infos()
 
         self.global_axis = self.get_global_axis()
         self.key_joints['a'].set_local_axis(self.global_axis)
@@ -121,12 +120,16 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         if not self.get_diff_angles():
             self.key_joints['t'].global_pos = pos_t_before
 
-        # TODO: Get r? (second step)
-        self.set_for_c_prime_to_t()
+        # Re calculate a, b's local axis
+        # Because transformation matrix was gotten after rotate by alpha or beta.
+        self.set_key_frame_infos()
+        self.key_joints['a'].set_local_axis(self.global_axis)
+        self.key_joints['b'].set_local_axis(self.global_axis)
 
-    def set_for_c_prime_to_t(self):
-        # Set c_prime's transformation matrix.
-        self.set_key_frame_infos(self.get_c_prime_transformation_matrix)
+        # TODO: Get r? (second step)
+        self.set_for_second_step()
+
+    def set_for_second_step(self):
         # Set c_prime's global_pos
         self.key_joints['c_prime'].set_global_position()
 
@@ -147,7 +150,10 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         tau = np.rad2deg(np.arccos(inner_product / (len_a_c_prime * len_a_t)))
         self.key_joints['a'].diff_angle2 = tau
 
-    def set_key_frame_infos(self, set_func):
+    def set_key_frame_infos(self):
+        for key in self.key_joints:
+            self.key_joints[key].idx = -1
+
         self.channels_idx = 0
         self.posture_idx = 0
         self.joint_idx = -1
@@ -155,7 +161,7 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         # To exclude matrix states made by camera control.
         glPushMatrix()
         glLoadIdentity()
-        set_func(root, self.key_frame)
+        self.save_key_frame_infos(root, self.key_frame)
         glPopMatrix()
 
     def is_valid_triangle(self, a, b, c):
@@ -232,35 +238,6 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         glGetFloatv(GL_MODELVIEW_MATRIX, a)
         return np.reshape(np.array(a), (4, 4))
 
-    def get_c_prime_transformation_matrix(self, joint, frame):
-        glPushMatrix()
-
-        # Translate or Rotate joint offset.
-        glTranslatef(joint.offset[0], joint.offset[1], joint.offset[2])
-
-        self.joint_idx += 1
-
-        if joint.isEndEffector:
-            if self.key_joints['c'].idx == self.joint_idx:
-                matrix = self.get_current_transformation_matrix()
-                self.key_joints['c_prime'].transformation_matrix = matrix
-
-            glPopMatrix()
-            return
-
-        for key in self.key_joints:
-            if key != 'a' and key != 'b':
-                continue
-            if self.key_joints[key].idx == self.joint_idx:
-                local_axis = self.key_joints[key].local_axis
-                glRotatef(self.key_joints[key].diff_angle, local_axis[0], local_axis[1], local_axis[2])
-
-        self.transform_by_channel(frame)
-
-        for child in joint.children:
-            self.save_key_frame_infos(child, frame)
-        glPopMatrix()
-
     def save_key_frame_infos(self, joint, frame):
         glPushMatrix()
 
@@ -274,6 +251,7 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
             if self.key_joints['c'].idx == -1 and self.key_joints['a'].idx != -1:
                 matrix = self.get_current_transformation_matrix()
                 self.key_joints['c'].transformation_matrix = matrix
+                self.key_joints['c_prime'].transformation_matrix
                 self.key_joints['c'].idx = self.joint_idx
 
                 self.key_joints['t'].transformation_matrix = matrix
@@ -285,12 +263,12 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
             if key != 'a' and key != 'b':
                 continue
             if self.bvh_motion.joint_list[self.channels_idx] == self.key_joints[key].joint_name:
+                local_axis = self.key_joints[key].local_axis
+                glRotatef(self.key_joints[key].diff_angle, local_axis[0], local_axis[1], local_axis[2])
+
                 matrix = self.get_current_transformation_matrix()
                 self.key_joints[key].transformation_matrix = matrix
                 self.key_joints[key].idx = self.joint_idx
-
-                local_axis = self.key_joints[key].local_axis
-                glRotatef(self.key_joints[key].diff_angle, local_axis[0], local_axis[1], local_axis[2])
 
         self.transform_by_channel(frame)
 
@@ -323,16 +301,20 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
                     continue
 
                 if self.joint_idx == self.key_joints[key].idx:
-                    # For debugging. (Draw a's local axis)
+                    local_axis = self.key_joints[key].local_axis
+                    glRotatef(self.key_joints[key].diff_angle, local_axis[0], local_axis[1], local_axis[2])
+
+                    # For debugging. (Draw local axis)
                     glColor3ub(0, 255, 255)
                     glBegin(GL_LINES)
                     glVertex3fv(np.array([0, 0, 0]))
-                    local_axis = self.key_joints[key].local_axis
                     glVertex3fv(np.array([local_axis[0], local_axis[1], local_axis[2]]))
                     glColor3ub(255, 255, 0)
                     glEnd()
 
-                    glRotatef(self.key_joints[key].diff_angle, local_axis[0], local_axis[1], local_axis[2])
+                    if key == 'a':
+                        local_axis2 = self.key_joints[key].local_axis2
+                        glRotatef(self.key_joints[key].diff_angle2, local_axis2[0], local_axis2[1], local_axis2[2])
 
         self.transform_by_channel(self.rendering_frame)
 
