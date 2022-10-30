@@ -65,7 +65,7 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
 
         self.key_frame = -1
         self.joint_idx = -1
-        self.key_joints = {'a': KeyJoint("RightForeArm"), 'b': KeyJoint("RightHand"), 'c': KeyJoint(), 't': KeyJoint(), 'c_prime': KeyJoint()}
+        self.key_joints = {'a': KeyJoint("RightArm"), 'b': KeyJoint("RightForeArm"), 'c': KeyJoint(), 't': KeyJoint(), 'c_prime': KeyJoint()}
         self.global_axis = np.array([0, 0, 0, 0])
         self.global_axis2 = np.array([0, 0, 0, 0])
 
@@ -282,8 +282,6 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         glVertex3fv(np.array([0, 0, 0]))
         glVertex3fv(np.array([joint.offset[0], joint.offset[1], joint.offset[2]]))
         glEnd()
-        if render_key_frame:
-            glColor3ub(255, 0, 0)
 
         # Translate or Rotate joint offset.
         glTranslatef(joint.offset[0], joint.offset[1], joint.offset[2])
@@ -291,6 +289,8 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         self.joint_idx += 1
 
         if joint.isEndEffector:
+            if render_key_frame:
+                glColor3ub(255, 0, 0)
             glPopMatrix()
             return
 
