@@ -1,5 +1,6 @@
 from MotionViewer import *
 import pytest
+import Util as util
 
 ###########################################################
 @pytest.fixture
@@ -55,7 +56,7 @@ def test_get_global_position_is_correct(renderer):
     assert global_pos[1] == 0
     assert global_pos[2] == 0
 
-
+'''
 def test_get_global_axis_is_correct(renderer):
     renderer.key_end_effector = 3
     global_axis = renderer.get_global_axis()
@@ -77,25 +78,35 @@ def test_get_local_axis_is_correct(renderer):
     assert global_axis[0] == local_axis[0]
     assert global_axis[1] == local_axis[1]
     assert global_axis[2] == local_axis[2]
+'''
 
-def test_get_degree_between_vectors(renderer):
+
+def test_get_degree_between_vectors():
     vec1 = np.array([2, 2, 0])
     vec2 = np.array([-1, 2, 0])
-    degree = renderer.get_degree_between_vectors(vec1, vec2)
+    degree = util.get_degree_between_vectors(vec1, vec2)
     assert degree == 45 + np.rad2deg(np.arctan(0.5))
 
-def test_get_normal_vector(renderer):
+
+def test_get_normal_vector():
     vec1 = np.array([2, 2, 0])
     vec2 = np.array([-1, 2, 0])
-    normal_vector = renderer.get_normal_vector(vec1, vec2)
+    normal_vector = util.get_normal_vector(vec1, vec2)
     assert normal_vector[0] == 0
     assert normal_vector[1] == 0
     assert normal_vector[2] == 1
 
-def test_get_degree_between_triangle(renderer):
-    degree = renderer.get_degree_between_triangle(3, 3, 3)
+
+def test_get_degree_between_triangle():
+    degree = util.get_degree_between_triangle(3, 3, 3)
     degree = round(degree, 2)
     assert degree == 60
-    degree = renderer.get_degree_between_triangle(2, 5, 6)
+    degree = util.get_degree_between_triangle(2, 5, 6)
     degree = round(degree, 2)
     assert degree == 110.49
+
+def test_is_valid_triangle():
+    is_valid = util.is_valid_triangle(3, 4, 5)
+    assert is_valid == True
+    is_valid = util.is_valid_triangle(3, 10, 4)
+    assert is_valid == False
