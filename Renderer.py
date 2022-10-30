@@ -12,32 +12,32 @@ class Renderer(metaclass=ABCMeta):
 class KeyJoint:
     def __init__(self, joint_name=""):
         self.global_pos = []
-        self.local_axis = [0, 0, 0]
+        self.local_axis = np.array([0, 0, 0, 0])
         self.diff_angle = 0
         self.idx = -1
         self.transformation_matrix = np.array([0] * 16).reshape(4, 4)
         self.joint_name = joint_name
 
         # For second step (Only for a...)
-        self.local_axis2 = [0, 0, 0]
+        self.local_axis2 = np.array([0, 0, 0, 0])
         self.diff_angle2 = 0
 
     def reset(self):
         self.global_pos = []
-        self.local_axis = [0, 0, 0]
+        self.local_axis = np.array([0, 0, 0, 0])
         self.diff_angle = 0
         self.idx = -1
         self.transformation_matrix = np.array([0] * 16).reshape(4, 4)
 
-        self.local_axis2 = [0, 0, 0]
+        self.local_axis2 = np.array([0, 0, 0, 0])
         self.diff_angle2 = 0
 
     def set_global_position(self):
         self.global_pos = self.get_global_position()
-    def get_global_position(self):
+
+    def get_global_position(self, test_x=0):
         # TODO: change 4 -> 0 after test
-        # TODO: 매트릭스 .T 해봄.
-        ret = self.transformation_matrix.T @ np.array([0, 0, 0, 1]).T
+        ret = self.transformation_matrix.T @ np.array([test_x, 0, 0, 1]).T
         ret = ret[:-1]
         return ret
 
@@ -49,7 +49,9 @@ class KeyJoint:
 
     def get_local_axis(self, global_axis):
         # TODO 어떻게 곱해야하지.... global axis를 a의 local에서 바라본 벡터로 나타내려면..
-        local_axis = self.transformation_matrix @ global_axis
+        local_axis = global_axis @ self.transformation_matrix.T
+
+        local_axis.squeeze()
         return local_axis
 
 
@@ -65,7 +67,8 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         self.key_frame = -1
         self.joint_idx = -1
         self.key_joints = {'a': KeyJoint("RightForeArm"), 'b': KeyJoint("RightHand"), 'c': KeyJoint(), 't': KeyJoint(), 'c_prime': KeyJoint()}
-        self.global_axis = [0, 0, 0]
+        self.global_axis = np.array([0, 0, 0, 0])
+        self.global_axis2 = np.array([0, 0, 0, 0])
 
     def get_bvh(self):
         return self.bvh_motion
@@ -105,6 +108,7 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         self.set_key_frame_infos()
 
         self.global_axis = self.get_global_axis()
+        print("Initial c prime : ", self.key_joints['c_prime'].global_pos)
         self.key_joints['a'].set_local_axis(self.global_axis)
         self.key_joints['b'].set_local_axis(self.global_axis)
 
@@ -121,13 +125,16 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
             self.key_joints['t'].global_pos = pos_t_before
 
         # Re calculate a, b's local axis
-        # Because transformation matrix was gotten after rotate by alpha or beta.
+
         self.set_key_frame_infos()
-        self.key_joints['a'].set_local_axis(self.global_axis)
-        self.key_joints['b'].set_local_axis(self.global_axis)
+        #self.key_joints['a'].set_local_axis(self.global_axis)
+        #self.key_joints['b'].set_local_axis(self.global_axis)
+
+        self.key_joints['c_prime'].set_global_position()
+
 
         # TODO: Get r? (second step)
-        self.set_for_second_step()
+        #self.set_for_second_step()
 
     def set_for_second_step(self):
         # Set c_prime's global_pos
@@ -138,17 +145,26 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         pos_t = self.key_joints['t'].global_pos
         vec_a_c_prime = pos_c_prime - pos_a
         vec_a_t = pos_t - pos_a
-        len_a_c_prime = np.linalg.norm(vec_a_c_prime)
-        len_a_t = np.linalg.norm(vec_a_t)
 
         # Set a's local axis2 for second step
-        normal_vector = self.get_normal_vector(vec_a_c_prime, vec_a_t)
+        normal_vector = np.array([0, 0, 0, 0])
+        if not np.array_equal(vec_a_c_prime, vec_a_t):
+            normal_vector = self.get_normal_vector(vec_a_c_prime, vec_a_t)
+        self.global_axis2 = normal_vector
         self.key_joints['a'].set_local_axis2(normal_vector)
 
         # Set a's diff angle2 for second step
-        inner_product = np.dot(vec_a_c_prime, vec_a_t)
-        tau = np.rad2deg(np.arccos(inner_product / (len_a_c_prime * len_a_t)))
+        tau = 0
+        if not np.array_equal(vec_a_c_prime, vec_a_t):
+            tau = self.get_degree_between_vectors(vec_a_c_prime, vec_a_t)
         self.key_joints['a'].diff_angle2 = tau
+
+    def get_degree_between_vectors(self, vec1, vec2):
+        len_vec1 = np.linalg.norm(vec1)
+        len_vec2 = np.linalg.norm(vec2)
+        inner_product = np.dot(vec1, vec2)
+        degree = np.rad2deg(np.arccos(inner_product / (len_vec1 * len_vec2)))
+        return degree
 
     def set_key_frame_infos(self):
         for key in self.key_joints:
@@ -170,6 +186,12 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         else:
             return False
 
+    def get_degree_between_triangle(self, a, b, c):
+        # Return degree between a and b
+        cos_angle_alpha = (np.power(a, 2) + np.power(b, 2) - np.power(c, 2)) / (
+                2 * a * b)
+        return np.rad2deg(np.arccos(cos_angle_alpha))
+
     def get_diff_angles(self):
         pos_a = self.key_joints['a'].global_pos
         pos_b = self.key_joints['b'].global_pos
@@ -183,28 +205,15 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         if not self.is_valid_triangle(length_ab, length_bc, length_ac_after):
             return False
 
-        cos_angle_alpha = (np.power(length_ab, 2) + np.power(length_ac_before, 2) - np.power(length_bc, 2)) / (
-                    2 * length_ab * length_ac_before)
-        angle_alpha = np.rad2deg(np.arccos(cos_angle_alpha))
-
-        cos_angle_alpha_after = (np.power(length_ab, 2) + np.power(length_ac_after, 2) - np.power(length_bc, 2)) / (
-                    2 * length_ab * length_ac_after)
-        angle_alpha_after = np.rad2deg(np.arccos(cos_angle_alpha_after))
+        angle_alpha = self.get_degree_between_triangle(length_ab, length_ac_before, length_bc)
+        angle_alpha_after = self.get_degree_between_triangle(length_ab, length_ac_after, length_bc)
 
         # TODO 반대..? alpha - alpha_after..?
-        # self.diff_alpha = angle_alpha_after - angle_alpha
-        # 이게 맞는듯..? 동작상..
         self.key_joints['a'].diff_angle = angle_alpha - angle_alpha_after
 
-        cos_angle_beta = (np.power(length_ab, 2) + np.power(length_bc, 2) - np.power(length_ac_before, 2)) / (
-                    2 * length_ab * length_bc)
-        angle_beta = np.rad2deg(np.arccos(cos_angle_beta))
+        angle_beta = self.get_degree_between_triangle(length_ab, length_bc, length_ac_before)
+        angle_beta_after = self.get_degree_between_triangle(length_ab, length_bc, length_ac_after)
 
-        cos_angle_beta_after = (np.power(length_ab, 2) + np.power(length_bc, 2) - np.power(length_ac_after, 2)) / (
-                    2 * length_ab * length_bc)
-        angle_beta_after = np.rad2deg(np.arccos(cos_angle_beta_after))
-
-        # self.diff_beta = angle_beta_after - angle_beta
         self.key_joints['b'].diff_angle = angle_beta - angle_beta_after
 
         return True
@@ -213,7 +222,7 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         # Get global axis vector by outer product
         # (Vertical vector to a, b, c plane.)
         normal_vector = np.cross(vec1, vec2)
-        normal_vector = normal_vector / np.linalg.norm(normal_vector)
+        normal_vector = np.divide(normal_vector, np.linalg.norm(normal_vector))
         normal_vector = np.append(normal_vector, np.array([0]))
         return normal_vector
 
@@ -251,7 +260,7 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
             if self.key_joints['c'].idx == -1 and self.key_joints['a'].idx != -1:
                 matrix = self.get_current_transformation_matrix()
                 self.key_joints['c'].transformation_matrix = matrix
-                self.key_joints['c_prime'].transformation_matrix
+                self.key_joints['c_prime'].transformation_matrix = matrix
                 self.key_joints['c'].idx = self.joint_idx
 
                 self.key_joints['t'].transformation_matrix = matrix
@@ -259,18 +268,27 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
             glPopMatrix()
             return
 
+        # TODO!!
+        self.transform_by_channel(frame)
+
         for key in self.key_joints:
             if key != 'a' and key != 'b':
                 continue
-            if self.bvh_motion.joint_list[self.channels_idx] == self.key_joints[key].joint_name:
-                local_axis = self.key_joints[key].local_axis
-                glRotatef(self.key_joints[key].diff_angle, local_axis[0], local_axis[1], local_axis[2])
+            if self.bvh_motion.joint_list[self.channels_idx-1] == self.key_joints[key].joint_name:
+                #local_axis = self.key_joints[key].get_local_axis(self.global_axis, self.get_current_transformation_matrix())
 
                 matrix = self.get_current_transformation_matrix()
                 self.key_joints[key].transformation_matrix = matrix
                 self.key_joints[key].idx = self.joint_idx
 
-        self.transform_by_channel(frame)
+                self.key_joints[key].set_local_axis(self.global_axis)
+                local_axis = self.key_joints[key].local_axis
+                glRotatef(self.key_joints[key].diff_angle, local_axis[0], local_axis[1], local_axis[2])
+
+                #if key == 'a':
+                 #   local_axis2 = self.key_joints[key].local_axis2
+                    #local_axis2 = self.key_joints[key].get_local_axis(self.global_axis2, self.get_current_transformation_matrix())
+                  #  glRotatef(self.key_joints[key].diff_angle2, local_axis2[0], local_axis2[1], local_axis2[2])
 
         for child in joint.children:
             self.save_key_frame_infos(child, frame)
@@ -295,28 +313,25 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
             glPopMatrix()
             return
 
+        self.transform_by_channel(self.rendering_frame)
+
         if render_key_frame:
             for key in self.key_joints:
                 if key != 'a' and key != 'b':
                     continue
 
                 if self.joint_idx == self.key_joints[key].idx:
+                    #local_axis = self.key_joints[key].get_local_axis(self.global_axis, self.get_current_transformation_matrix())
                     local_axis = self.key_joints[key].local_axis
+                    glColor3ub(255, 255, 0)
+
                     glRotatef(self.key_joints[key].diff_angle, local_axis[0], local_axis[1], local_axis[2])
 
-                    # For debugging. (Draw local axis)
-                    glColor3ub(0, 255, 255)
-                    glBegin(GL_LINES)
-                    glVertex3fv(np.array([0, 0, 0]))
-                    glVertex3fv(np.array([local_axis[0], local_axis[1], local_axis[2]]))
-                    glColor3ub(255, 255, 0)
-                    glEnd()
+                    #if key == 'a':
+                     #   local_axis2 = self.key_joints[key].local_axis2
+                        #local_axis2 = self.key_joints[key].get_local_axis(self.global_axis2, self.get_current_transformation_matrix())
+                      #  glRotatef(self.key_joints[key].diff_angle2, local_axis2[0], local_axis2[1], local_axis2[2])
 
-                    if key == 'a':
-                        local_axis2 = self.key_joints[key].local_axis2
-                        glRotatef(self.key_joints[key].diff_angle2, local_axis2[0], local_axis2[1], local_axis2[2])
-
-        self.transform_by_channel(self.rendering_frame)
 
         for child in joint.children:
             self.draw_frame_recursively(child, render_key_frame)
@@ -351,21 +366,33 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         glColor3ub(255, 255, 255)
 
         # For Debugging
-        pos_a = self.key_joints['a'].global_pos
-        pos_b = self.key_joints['b'].global_pos
-        pos_c = self.key_joints['c'].global_pos
         pos_t = self.key_joints['t'].global_pos
+        pos_a = self.key_joints['a'].global_pos
+        pos_c_prime = self.key_joints['c_prime'].global_pos
+        #mat = self.key_joints['c_prime'].transformation_matrix @ self.get_current_transformation_matrix()
+        #print("drawing c prime : ", mat.T @ np.array([0, 0, 0, 1]).T)
 
         glPushMatrix()
-        glPointSize(10)
+        glPointSize(5)
         glBegin(GL_POINTS)
         glColor3ub(50, 255, 0)
-        glVertex3fv(np.array([pos_a[0], pos_a[1], pos_a[2]]))
-        glVertex3fv(np.array([pos_b[0], pos_b[1], pos_b[2]]))
-        glVertex3fv(np.array([pos_c[0], pos_c[1], pos_c[2]]))
         glVertex3fv(np.array([pos_t[0], pos_t[1], pos_t[2]]))
+        glColor3ub(255, 50, 0)
+        glVertex3fv(np.array([pos_c_prime[0], pos_c_prime[1], pos_c_prime[2]]))
         glColor3ub(255, 255, 255)
         glEnd()
+
+        glBegin(GL_LINES)
+        glColor3ub(255, 0, 255)
+        glVertex3fv(np.array([pos_a[0], pos_a[1], pos_a[2]]))
+        glVertex3fv(np.array([pos_t[0], pos_t[1], pos_t[2]]))
+        glVertex3fv(np.array([pos_a[0], pos_a[1], pos_a[2]]))
+        glVertex3fv(np.array([pos_c_prime[0], pos_c_prime[1], pos_c_prime[2]]))
+        glColor3ub(255, 255, 255)
+        glEnd()
+
+        if round(np.linalg.norm(pos_t - pos_a), 2) != round(np.linalg.norm(pos_c_prime - pos_a), 2):
+            print("DIFFERENT! ", np.linalg.norm(pos_t - pos_a),  ", ",np.linalg.norm(pos_c_prime - pos_a))
         glPopMatrix()
 
     def render(self):
