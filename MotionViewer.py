@@ -1,16 +1,16 @@
 import sys
 
 from PyQt5.QtCore import QSize
-from PyQt5.QtGui import QIcon, QPixmap
+from PyQt5.QtGui import QIcon, QPixmap, QIntValidator
 
+import StyleSheet
 from Renderer import *
 from CameraController import CameraController
 from Motion import *
+from StyleSheet import *
 
 # For PyQt5
-from PyQt5 import QtCore
-from PyQt5 import QtOpenGL 
-from PyQt5 import QtWidgets
+from PyQt5 import QtCore, QtOpenGL, QtWidgets
 
 ###########################################################
 # Global renderer
@@ -60,6 +60,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.time_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.time_input = QtWidgets.QLineEdit()
         self.play_btn = QtWidgets.QPushButton("", self)
+        self.key_frame_input = QtWidgets.QLineEdit()
+        self.warping_input = QtWidgets.QLineEdit()
+        self.key_frame_check_box = QtWidgets.QCheckBox()
+        self.warping_check_box = QtWidgets.QCheckBox()
+
+        self.onlyInt = QIntValidator()
+        self.time_input.setValidator(self.onlyInt)
+        self.key_frame_input.setValidator(self.onlyInt)
+        self.warping_input.setValidator(self.onlyInt)
         self.initGUI()
         
         timer = QtCore.QTimer(self)
@@ -86,74 +95,59 @@ class MainWindow(QtWidgets.QMainWindow):
         widgets.addWidget(self.play_btn)
 
         self.time_slider.setRange(0, 1)
-        self.time_slider.setStyleSheet('''
-            QSlider::groove:horizontal {
-            border: 1px solid #bbb;
-            background: white;
-            height: 10px;
-            border-radius: 4px;
-            }
-            
-            QSlider::sub-page:horizontal {
-            background: qlineargradient(x1: 0, y1: 0,    x2: 0, y2: 1,
-                stop: 0 #66e, stop: 1 #bbf);
-            background: qlineargradient(x1: 0, y1: 0.2, x2: 1, y2: 1,
-                stop: 0 #bbf, stop: 1 #55f);
-            border: 1px solid #777;
-            height: 10px;
-            border-radius: 4px;
-            }
-            
-            QSlider::add-page:horizontal {
-            background: #fff;
-            border: 1px solid #777;
-            height: 10px;
-            border-radius: 4px;
-            }
-            
-            QSlider::handle:horizontal {
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                stop:0 #eee, stop:1 #ccc);
-            border: 1px solid #777;
-            width: 12px;
-            margin-top: -2px;
-            margin-bottom: -2px;
-            border-radius: 4px;
-            }
-            
-            QSlider::handle:horizontal:hover {
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                stop:0 #fff, stop:1 #ddd);
-            border: 1px solid #444;
-            border-radius: 7px;
-            }
-            
-            QSlider::sub-page:horizontal:disabled {
-            background: #bbb;
-            border-color: #999;
-            }
-            
-            QSlider::add-page:horizontal:disabled {
-            background: #eee;
-            border-color: #999;
-            }
-            
-            QSlider::handle:horizontal:disabled {
-            background: #eee;
-            border: 1px solid #aaa;
-            border-radius: 4px;
-            }
-        ''')
+        self.time_slider.setStyleSheet(StyleSheet.TIME_SLIDER_STYLE)
 
         self.time_slider.valueChanged.connect(lambda val: self.set_frame(val))
         widgets.addWidget(self.time_slider)
 
         self.time_input.returnPressed.connect(self.set_frame_by_input)
         self.time_input.setFixedSize(30, 30)
+
         widgets.addWidget(self.time_input)
+
+        widgets2 = QtWidgets.QHBoxLayout()
+        self.key_frame_check_box.stateChanged.connect(self.enable_key_frame)
+        widgets2.addWidget(self.key_frame_check_box)
+        self.key_frame_input.returnPressed.connect(self.set_key_frame)
+        widgets2.addWidget(self.key_frame_input)
+
+        self.warping_check_box.stateChanged.connect(self.enable_warping)
+        widgets2.addWidget(self.warping_check_box)
+        self.warping_input.returnPressed.connect(self.set_warping)
+        widgets2.addWidget(self.warping_input)
+
         central_widget.setLayout(gui_layout)
 
         gui_layout.addLayout(widgets)
+        gui_layout.addLayout(widgets2)
+
+    def set_key_frame(self):
+        if not self.key_frame_check_box.isChecked():
+            self.key_frame_input.clear()
+            return
+        key_frame = int(self.key_frame_input.text())
+        viewer.bvh_renderer.set_key_frame(key_frame)
+
+    def enable_key_frame(self, state):
+        if state == QtCore.Qt.Checked:
+            viewer.bvh_renderer.set_key_frame(0)
+        else:
+            self.key_frame_input.clear()
+            viewer.bvh_renderer.set_key_frame(-1)
+
+    def set_warping(self):
+        if not self.warping_check_box.isChecked():
+            self.warping_input.clear()
+            return
+        interval = int(self.warping_input.text())
+        viewer.bvh_renderer.set_enable_warping(interval)
+
+    def enable_warping(self, state):
+        if state == QtCore.Qt.Checked:
+            viewer.bvh_renderer.set_enable_warping(0)
+        else:
+            self.warping_input.clear()
+            viewer.bvh_renderer.set_enable_warping(-1)
 
     def set_play_btn_icon(self, is_play):
         pixmap = None
@@ -172,10 +166,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def set_frame_by_input(self):
         global viewer
         val = self.time_input.text()
-        
-        if not val.isdigit():
-            self.show_alert("Enter decimal number")
-            return
         val = int(val)
 
         if val < 0:
@@ -212,9 +202,6 @@ class MainWindow(QtWidgets.QMainWindow):
             viewer.bvh_renderer.start_or_stop_animation()
         elif event.key() == QtCore.Qt.Key_V:
             viewer.camera_controller.flip_projection()
-        elif event.key() == QtCore.Qt.Key_I:
-            frame = QtWidgets.QInputDialog.getInt(self, 'Inverse Kinematics', "Enter a frame #")
-            viewer.bvh_renderer.set_key_frame(frame)
         elif event.key() == QtCore.Qt.Key_W: # Up
             viewer.bvh_renderer.move_end_effector([0, ik_factor, 0])
         elif event.key() == QtCore.Qt.Key_S: # Down
@@ -227,8 +214,6 @@ class MainWindow(QtWidgets.QMainWindow):
             viewer.bvh_renderer.move_end_effector([0, 0, -ik_factor])
         elif event.key() == QtCore.Qt.Key_E: # Front
             viewer.bvh_renderer.move_end_effector([0, 0, ik_factor])
-
-
 
     def wheelEvent(self, event):
         y_offset = 0.005 * event.angleDelta().y()

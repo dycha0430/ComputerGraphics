@@ -1,3 +1,4 @@
+from OpenGL.GL import *
 import numpy as np
 
 
@@ -30,3 +31,10 @@ def get_normal_vector(vec1, vec2):
     normal_vector = np.divide(normal_vector, np.linalg.norm(normal_vector))
     normal_vector = np.append(normal_vector, np.array([0]))
     return normal_vector
+
+
+def get_current_transformation_matrix():
+    # Get current transformation matrix.
+    a = (GLfloat * 16)()
+    glGetFloatv(GL_MODELVIEW_MATRIX, a)
+    return np.reshape(np.array(a), (4, 4))

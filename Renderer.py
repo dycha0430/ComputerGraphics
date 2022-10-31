@@ -1,8 +1,7 @@
 from OpenGL.GL import *
 import numpy as np
 from abc import *
-import Util as util
-from KeyJoint import KeyJoint
+from LimbIK import LimbIK, Step
 
 
 class Renderer(metaclass=ABCMeta):
@@ -16,15 +15,13 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         self.bvh_motion = bvh_motion
         self.cur_frame = 0
         self.rendering_frame = 0
-        self.posture_idx = 0
-        self.channels_idx = 0
         self.animating_mode = False
 
-        self.key_frame = -1
+        self.limb_ik = LimbIK(bvh_motion)
+        self.warping = 0
+        self.posture_idx = 0
+        self.channels_idx = 0
         self.joint_idx = -1
-        self.key_joints = {'a': KeyJoint("RightArm"), 'b': KeyJoint("RightForeArm"), 'c': KeyJoint(), 't': KeyJoint(), 'c_prime': KeyJoint()}
-        self.global_axis = np.array([0, 0, 0, 0])
-        self.global_axis2 = np.array([0, 0, 0, 0])
 
     def get_bvh(self):
         return self.bvh_motion
@@ -32,8 +29,9 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
     def set_bvh(self, bvh_motion):
         self.bvh_motion = bvh_motion
         self.cur_frame = 0
-        self.key_frame = -1
         self.animating_mode = False
+        self.limb_ik.set_bvh(bvh_motion)
+        self.warping = 0
 
     def get_frame_num(self):
         if self.bvh_motion is not None:
@@ -48,161 +46,39 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
     def start_or_stop_animation(self):
         self.animating_mode = not self.animating_mode
 
-    def set_key_frame(self, frame):
+    def set_key_frame(self, key_frame):
         if self.bvh_motion is None:
             return
 
-        self.key_frame = frame[0]
-        if self.get_frame_num() <= self.key_frame:
-            self.key_frame = self.get_frame_num() - 1
-        elif self.key_frame < 0:
-            return
+        if self.get_frame_num() <= key_frame:
+            key_frame = self.get_frame_num() - 1
 
-        for key in self.key_joints:
-            self.key_joints[key].reset()
-
-        self.set_key_frame_infos()
-
-        self.global_axis = self.get_global_axis()
-        self.key_joints['a'].local_axis = self.key_joints['a'].get_local_axis(self.global_axis)
-        self.key_joints['b'].local_axis = self.key_joints['b'].get_local_axis(self.global_axis)
+        self.limb_ik.set_key_frame(key_frame)
 
     # Move target end effector by keyboard input WASD+QE
     def move_end_effector(self, offset):
-        if self.key_frame < 0:
-            return
+        self.limb_ik.move_end_effector(offset)
 
-        pos_t_before = self.key_joints['t'].global_pos
-        self.key_joints['t'].global_pos = (pos_t_before[0] + offset[0], pos_t_before[1] + offset[1], pos_t_before[2] + offset[2])
+    def set_enable_warping(self, interval):
+        if interval < 0:
+            interval = 0
+        self.warping = interval
 
-        # Get alpha and beta different in first step.
-        if not self.get_diff_angles():
-            self.key_joints['t'].global_pos = pos_t_before
+    def get_warping_angle(self, degree):
+        key_frame = self.limb_ik.get_key_frame()
+        start_frame = max(key_frame - self.warping, 0)
+        end_frame = min(key_frame + self.warping, self.get_frame_num() - 1)
 
-        # Get tau value and normal vector of ac't plane (second step)
-        self.set_for_second_step()
+        if start_frame <= self.rendering_frame <= key_frame:
+            if key_frame == start_frame: return degree
+            degree = (degree / (key_frame - start_frame)) * (self.rendering_frame - start_frame)
+        elif key_frame < self.rendering_frame <= end_frame:
+            if key_frame == end_frame: return degree
+            degree = (degree / (end_frame - key_frame)) * (end_frame - self.rendering_frame)
+        else:
+            degree = 0
 
-    def set_for_second_step(self):
-        self.set_key_frame_infos()
-
-        # Set c_prime's global_pos
-        self.key_joints['c_prime'].set_global_position()
-
-        pos_a = self.key_joints['a'].global_pos
-        pos_c_prime = self.key_joints['c_prime'].global_pos
-        pos_t = self.key_joints['t'].global_pos
-        vec_a_c_prime = pos_c_prime - pos_a
-        vec_a_t = pos_t - pos_a
-
-        # Set a's local axis2 for second step
-        normal_vector = np.array([0, 0, 0, 0])
-        if not np.array_equal(vec_a_c_prime, vec_a_t):
-            normal_vector = util.get_normal_vector(vec_a_c_prime, vec_a_t)
-        self.global_axis2 = normal_vector
-        self.key_joints['a'].local_axis2 = self.key_joints['a'].get_local_axis(normal_vector)
-
-        # Set a's diff angle2 for second step
-        tau = 0
-        if not np.array_equal(vec_a_c_prime, vec_a_t):
-            tau = util.get_degree_between_vectors(vec_a_c_prime, vec_a_t)
-        self.key_joints['a'].diff_angle2 = tau
-
-    def set_key_frame_infos(self):
-        for key in self.key_joints:
-            self.key_joints[key].idx = -1
-
-        self.channels_idx = 0
-        self.posture_idx = 0
-        self.joint_idx = -1
-        root = self.bvh_motion.get_root()
-        # To exclude matrix states made by camera control.
-        glPushMatrix()
-        glLoadIdentity()
-        self.save_key_frame_infos(root, self.key_frame)
-        glPopMatrix()
-
-    def get_diff_angles(self):
-        pos_a = self.key_joints['a'].global_pos
-        pos_b = self.key_joints['b'].global_pos
-        pos_c = self.key_joints['c'].global_pos
-        pos_t = self.key_joints['t'].global_pos
-
-        length_ac_after = np.linalg.norm(pos_t - pos_a)
-        length_ac_before = np.linalg.norm(pos_c - pos_a)
-        length_ab = np.linalg.norm(pos_b - pos_a)
-        length_bc = np.linalg.norm(pos_c - pos_b)
-        if not util.is_valid_triangle(length_ab, length_bc, length_ac_after):
-            return False
-
-        angle_alpha = util.get_degree_between_triangle(length_ab, length_ac_before, length_bc)
-        angle_alpha_after = util.get_degree_between_triangle(length_ab, length_ac_after, length_bc)
-
-        self.key_joints['a'].diff_angle = angle_alpha - angle_alpha_after
-
-        angle_beta = util.get_degree_between_triangle(length_ab, length_bc, length_ac_before)
-        angle_beta_after = util.get_degree_between_triangle(length_ab, length_bc, length_ac_after)
-
-        self.key_joints['b'].diff_angle = angle_beta - angle_beta_after
-
-        return True
-
-    def get_global_axis(self):
-        for key in self.key_joints:
-            self.key_joints[key].set_global_position()
-
-        pos_a = self.key_joints['a'].global_pos
-        pos_b = self.key_joints['b'].global_pos
-        pos_c = self.key_joints['c'].global_pos
-
-        vec_ab = pos_b - pos_a
-        vec_ac = pos_c - pos_a
-
-        global_axis = util.get_normal_vector(vec_ab, vec_ac)
-        return global_axis
-
-    def get_current_transformation_matrix(self):
-        # Get current transformation matrix.
-        a = (GLfloat * 16)()
-        glGetFloatv(GL_MODELVIEW_MATRIX, a)
-        return np.reshape(np.array(a), (4, 4))
-
-    def save_key_frame_infos(self, joint, frame):
-        glPushMatrix()
-
-        # Translate or Rotate joint offset.
-        glTranslatef(joint.offset[0], joint.offset[1], joint.offset[2])
-
-        self.joint_idx += 1
-
-        if joint.isEndEffector:
-            # Save first end effector. (target of Inverse Kinematics)
-            if self.key_joints['c'].idx == -1 and self.key_joints['a'].idx != -1:
-                matrix = self.get_current_transformation_matrix()
-                self.key_joints['c'].transformation_matrix = matrix
-                self.key_joints['c_prime'].transformation_matrix = matrix
-                self.key_joints['c'].idx = self.joint_idx
-                self.key_joints['t'].transformation_matrix = matrix
-
-            glPopMatrix()
-            return
-
-        self.transform_by_channel(frame)
-
-        for key in self.key_joints:
-            if key != 'a' and key != 'b':
-                continue
-            if self.bvh_motion.joint_list[self.channels_idx-1] == self.key_joints[key].joint_name:
-                matrix = self.get_current_transformation_matrix()
-                self.key_joints[key].transformation_matrix = matrix
-                self.key_joints[key].idx = self.joint_idx
-
-                local_axis = self.key_joints[key].get_local_axis(self.global_axis)
-
-                glRotatef(self.key_joints[key].diff_angle, local_axis[0], local_axis[1], local_axis[2])
-
-        for child in joint.children:
-            self.save_key_frame_infos(child, frame)
-        glPopMatrix()
+        return degree
 
     def draw_frame_recursively(self, joint, render_key_frame):
         glPushMatrix()
@@ -214,30 +90,31 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
 
         # Translate or Rotate joint offset.
         glTranslatef(joint.offset[0], joint.offset[1], joint.offset[2])
+        if render_key_frame:
+            glColor3ub(255, 0, 0)
 
         self.joint_idx += 1
 
         if joint.isEndEffector:
-            if render_key_frame:
-                glColor3ub(255, 0, 0)
             glPopMatrix()
             return
 
         self.transform_by_channel(self.rendering_frame)
 
-        if render_key_frame:
-            for key in self.key_joints:
-                if key != 'a' and key != 'b':
-                    continue
-
-                if self.joint_idx == self.key_joints[key].idx:
-                    local_axis = self.key_joints[key].local_axis
+        if render_key_frame or (self.limb_ik.get_key_frame() >= 0 and self.warping > 0):
+            key = self.limb_ik.get_joint_key(self.joint_idx)
+            if key is not None:
+                if render_key_frame:
                     glColor3ub(255, 255, 0)
+                local_axis2 = self.limb_ik.get_axis(key, Step.SECOND)
+                diff_angle2 = self.limb_ik.get_degree(key, Step.SECOND)
+                diff_angle2 = self.get_warping_angle(diff_angle2)
+                glRotatef(diff_angle2, local_axis2[0], local_axis2[1], local_axis2[2])
 
-                    if key == 'a':
-                        local_axis2 = self.key_joints['a'].local_axis2
-                        glRotatef(self.key_joints['a'].diff_angle2, local_axis2[0], local_axis2[1], local_axis2[2])
-                    glRotatef(self.key_joints[key].diff_angle, local_axis[0], local_axis[1], local_axis[2])
+                local_axis = self.limb_ik.get_axis(key, Step.FIRST)
+                diff_angle = self.limb_ik.get_degree(key, Step.FIRST)
+                diff_angle = self.get_warping_angle(diff_angle)
+                glRotatef(diff_angle, local_axis[0], local_axis[1], local_axis[2])
 
         for child in joint.children:
             self.draw_frame_recursively(child, render_key_frame)
@@ -261,56 +138,28 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
                 glRotatef(val, 0, 0, 1)
         self.channels_idx += 1
 
-    def render_key_frame(self):
+    def reset_indexes(self):
         self.posture_idx = 0
         self.channels_idx = 0
         self.joint_idx = -1
-        root = self.bvh_motion.get_root()
+
+    def render_key_frame(self, root):
+        self.reset_indexes()
         glColor3ub(255, 0, 0)
-        self.rendering_frame = self.key_frame
+        self.rendering_frame = self.limb_ik.get_key_frame()
         self.draw_frame_recursively(root, True)
         glColor3ub(255, 255, 255)
-
-        # For Debugging
-        pos_t = self.key_joints['t'].global_pos
-        pos_a = self.key_joints['a'].global_pos
-        pos_b = self.key_joints['b'].global_pos
-        pos_c = self.key_joints['c'].global_pos
-
-        glPushMatrix()
-        glPointSize(5)
-        glBegin(GL_POINTS)
-        glColor3ub(50, 255, 0)
-        glVertex3fv(np.array([pos_t[0], pos_t[1], pos_t[2]]))
-        glEnd()
-
-        glBegin(GL_LINES)
-        glColor3ub(255, 0, 0)
-        # ab
-        glVertex3fv(np.array([pos_a[0], pos_a[1], pos_a[2]]))
-        glVertex3fv(np.array([pos_b[0], pos_b[1], pos_b[2]]))
-        # ac
-        glVertex3fv(np.array([pos_b[0], pos_b[1], pos_b[2]]))
-        glVertex3fv(np.array([pos_c[0], pos_c[1], pos_c[2]]))
-        glColor3ub(255, 255, 255)
-        glEnd()
-        glPopMatrix()
 
     def render(self):
         if self.bvh_motion is None:
             return
         self.rendering_frame = self.cur_frame
-        self.posture_idx = 0
-        self.channels_idx = 0
+        self.reset_indexes()
         root = self.bvh_motion.get_root()
         self.draw_frame_recursively(root, False)
 
-        if self.key_frame >= 0:
-            self.render_key_frame()
-
-
-class KeyFrameRenderer(Renderer, metaclass=ABCMeta):
-    pass
+        if self.limb_ik.get_key_frame() >= 0:
+            self.render_key_frame(root)
 
 
 class BackgroundRenderer(Renderer, metaclass=ABCMeta):
@@ -324,6 +173,9 @@ class BackgroundRenderer(Renderer, metaclass=ABCMeta):
             glVertex3fv(np.array([line, 0, i]))
         glEnd()
 
+        self.render_axis()
+
+    def render_axis(self):
         glColor3ub(255, 0, 0)
         glBegin(GL_LINES)
         glVertex3fv(np.array([0, 0, 0]))
