@@ -51,7 +51,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         QtWidgets.QMainWindow.__init__(self) # call the init for the parent class
 
-        self.resize(800, 800)
+        self.resize(1260, 900)
         self.setWindowTitle('BVH Viewer')
         self.setMouseTracking(True)
         self.setAcceptDrops(True)
@@ -84,12 +84,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def initGUI(self):
         central_widget = QtWidgets.QWidget()
-        gui_layout = QtWidgets.QVBoxLayout()
         self.setCentralWidget(central_widget)
+
+        whole_layout = QtWidgets.QHBoxLayout()
+
+        gui_layout = QtWidgets.QVBoxLayout()
         gui_layout.addWidget(self.glWidget)
-
+        # --------- Bottom widgets -----------
         widgets = QtWidgets.QHBoxLayout()
-
         self.play_btn.clicked.connect(self.play_btn_clicked)
         self.set_play_btn_icon(True)
         widgets.addWidget(self.play_btn)
@@ -102,24 +104,33 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.time_input.returnPressed.connect(self.set_frame_by_input)
         self.time_input.setFixedSize(30, 30)
-
         widgets.addWidget(self.time_input)
-
-        widgets2 = QtWidgets.QHBoxLayout()
-        self.key_frame_check_box.stateChanged.connect(self.enable_key_frame)
-        widgets2.addWidget(self.key_frame_check_box)
-        self.key_frame_input.returnPressed.connect(self.set_key_frame)
-        widgets2.addWidget(self.key_frame_input)
-
-        self.warping_check_box.stateChanged.connect(self.enable_warping)
-        widgets2.addWidget(self.warping_check_box)
-        self.warping_input.returnPressed.connect(self.set_warping)
-        widgets2.addWidget(self.warping_input)
-
-        central_widget.setLayout(gui_layout)
-
+        # ------------------------------------
         gui_layout.addLayout(widgets)
-        gui_layout.addLayout(widgets2)
+        # ---------- Right widgets -----------
+        widgets2 = QtWidgets.QVBoxLayout()
+        key_frame_widget = QtWidgets.QHBoxLayout()
+        self.key_frame_check_box.stateChanged.connect(self.enable_key_frame)
+        key_frame_widget.addWidget(self.key_frame_check_box)
+        self.key_frame_input.returnPressed.connect(self.set_key_frame)
+        self.key_frame_input.setPlaceholderText("Key frame")
+        key_frame_widget.addWidget(self.key_frame_input)
+
+        warping_widget = QtWidgets.QHBoxLayout()
+        self.warping_check_box.stateChanged.connect(self.enable_warping)
+        warping_widget.addWidget(self.warping_check_box)
+        self.warping_input.returnPressed.connect(self.set_warping)
+        self.warping_input.setPlaceholderText("Warping interval")
+        warping_widget.addWidget(self.warping_input)
+
+        widgets2.addLayout(key_frame_widget)
+        widgets2.addLayout(warping_widget)
+        widgets2.addStretch()
+        # ------------------------------------
+        whole_layout.addLayout(gui_layout, stretch = 4)
+        whole_layout.addLayout(widgets2)
+
+        central_widget.setLayout(whole_layout)
 
     def set_key_frame(self):
         if not self.key_frame_check_box.isChecked():
@@ -196,7 +207,7 @@ class MainWindow(QtWidgets.QMainWindow):
         ik_factor = 0.01
 
         focused_widget = QtWidgets.QApplication.focusWidget()
-        if isinstance(focused_widget, QtWidgets.QLineEdit):
+        if isinstance(focused_widget, QtWidgets.QLineEdit) or isinstance(focused_widget, QtWidgets.QCheckBox):
             focused_widget.clearFocus()
         if event.key() == QtCore.Qt.Key_Space:
             viewer.bvh_renderer.start_or_stop_animation()
