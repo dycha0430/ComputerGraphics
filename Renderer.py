@@ -18,7 +18,7 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         self.animating_mode = False
 
         self.limb_ik = LimbIK(bvh_motion)
-        self.warping = 0
+        self.warping_interval = 0
         self.posture_idx = 0
         self.channels_idx = 0
         self.joint_idx = -1
@@ -31,7 +31,7 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         self.cur_frame = 0
         self.animating_mode = False
         self.limb_ik.set_bvh(bvh_motion)
-        self.warping = 0
+        self.warping_interval = 0
 
     def get_frame_num(self):
         if self.bvh_motion is not None:
@@ -62,12 +62,12 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
     def set_enable_warping(self, interval):
         if interval < 0:
             interval = 0
-        self.warping = interval
+        self.warping_interval = interval
 
     def get_warping_angle(self, degree):
         key_frame = self.limb_ik.get_key_frame()
-        start_frame = max(key_frame - self.warping, 0)
-        end_frame = min(key_frame + self.warping, self.get_frame_num() - 1)
+        start_frame = max(key_frame - self.warping_interval, 0)
+        end_frame = min(key_frame + self.warping_interval, self.get_frame_num() - 1)
 
         if start_frame <= self.rendering_frame <= key_frame:
             if key_frame == start_frame: return degree
@@ -101,17 +101,17 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
 
         self.transform_by_channel(self.rendering_frame)
 
-        if render_key_frame or (self.limb_ik.get_key_frame() >= 0 and self.warping > 0):
+        if render_key_frame or (self.limb_ik.get_key_frame() >= 0 and self.warping_interval > 0):
             key = self.limb_ik.get_joint_key(self.joint_idx)
             if key is not None:
                 if render_key_frame:
                     glColor3ub(255, 255, 0)
-                local_axis2 = self.limb_ik.get_axis(key, Step.SECOND)
+                local_axis2 = self.limb_ik.get_local_axis(key, Step.SECOND)
                 diff_angle2 = self.limb_ik.get_degree(key, Step.SECOND)
                 diff_angle2 = self.get_warping_angle(diff_angle2)
                 glRotatef(diff_angle2, local_axis2[0], local_axis2[1], local_axis2[2])
 
-                local_axis = self.limb_ik.get_axis(key, Step.FIRST)
+                local_axis = self.limb_ik.get_local_axis(key, Step.FIRST)
                 diff_angle = self.limb_ik.get_degree(key, Step.FIRST)
                 diff_angle = self.get_warping_angle(diff_angle)
                 glRotatef(diff_angle, local_axis[0], local_axis[1], local_axis[2])

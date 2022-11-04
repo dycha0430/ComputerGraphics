@@ -4,13 +4,13 @@ import Util as util
 
 ###########################################################
 @pytest.fixture
-def renderer():
-    renderer = BvhRenderer("")
+def limb_ik():
+    limb_ik = LimbIK("")
 
     val = np.sqrt(2) / 2
 
     # X rotation
-    renderer.key_joints['a'].transformation_matrix = ((np.array([
+    limb_ik.key_joints['a'].transformation_matrix = ((np.array([
         1, 0, 0, 0,
         0, val, val * -1, 0,
         0, val, val, 0,
@@ -18,7 +18,7 @@ def renderer():
     ])).reshape(4, 4)).T
 
     # Translate x by -4
-    renderer.key_joints['b'].transformation_matrix = ((np.array([
+    limb_ik.key_joints['b'].transformation_matrix = ((np.array([
         1, 0, 0, -4,
         0, 1, 0, 0,
         0, 0, 1, 0,
@@ -26,7 +26,7 @@ def renderer():
     ])).reshape(4, 4)).T
 
     # Z rotation
-    renderer.key_joints['c'].transformation_matrix = (np.array([
+    limb_ik.key_joints['c'].transformation_matrix = (np.array([
         val, val * -1, 0, 0,
         val, val, 0, 0,
         0, 0, 1, 0,
@@ -34,51 +34,35 @@ def renderer():
     ]).reshape(4, 4)).T
 
     # Y rotation
-    renderer.key_joints['t'].transformation_matrix = (np.array([
+    limb_ik.key_joints['t'].transformation_matrix = (np.array([
         val, 0, val, 0,
         0, 1, 0, 0,
         val * -1, 0, val, 0,
         0, 0, 0, 1
     ]).reshape(4, 4)).T
 
-    return renderer
+    return limb_ik
 
 
 # get_global_position 의 시작점을 4, 0, 0, 1로 한 것 기준.
-def test_get_global_position_is_correct(renderer):
-    global_pos = renderer.key_joints['c'].get_global_position(4)
+def test_get_global_position_is_correct(limb_ik):
+    global_pos = limb_ik.key_joints['c'].get_global_position(4)
     assert global_pos[0] == np.sqrt(8)
     assert global_pos[1] == np.sqrt(8)
     assert global_pos[2] == 0
 
-    global_pos = renderer.key_joints['b'].get_global_position(4)
+    global_pos = limb_ik.key_joints['b'].get_global_position(4)
     assert global_pos[0] == 0
     assert global_pos[1] == 0
     assert global_pos[2] == 0
 
-'''
-def test_get_global_axis_is_correct(renderer):
-    renderer.key_end_effector = 3
-    global_axis = renderer.get_global_axis()
 
-    assert global_axis[0] == -1 * global_axis[1]
-    assert -1 * global_axis[1] == global_axis[2]
-    assert global_axis[2] == global_axis[0]
-    assert global_axis[0] < 0
-
-
-def test_get_local_axis_is_correct(renderer):
-    global_axis = renderer.get_global_axis()
-    local_axis = renderer.get_local_axis()
-
-    print("global")
-    print(global_axis)
-    print("local")
-    print(local_axis)
-    assert global_axis[0] == local_axis[0]
-    assert global_axis[1] == local_axis[1]
-    assert global_axis[2] == local_axis[2]
-'''
+def test_get_local_axis_is_correct(limb_ik):
+    global_axis = [-1, -1, 0, 0]
+    local_axis = limb_ik.key_joints['c'].get_local_axis(global_axis)
+    assert local_axis[0] < 0
+    assert local_axis[1] == 0
+    assert local_axis[2] == 0
 
 
 def test_get_degree_between_vectors():

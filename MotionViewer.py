@@ -7,7 +7,6 @@ import StyleSheet
 from Renderer import *
 from CameraController import CameraController
 from Motion import *
-from StyleSheet import *
 
 # For PyQt5
 from PyQt5 import QtCore, QtOpenGL, QtWidgets

@@ -1,12 +1,8 @@
 from OpenGL.GL import *
 import numpy as np
 import Util as util
-from KeyJoint import KeyJoint
-from enum import Enum
+from KeyJoint import KeyJoint, Step
 
-class Step(Enum):
-    FIRST = 1
-    SECOND = 2
 
 class LimbIK:
     def __init__(self, bvh_motion):
@@ -36,11 +32,13 @@ class LimbIK:
         for key in self.key_joints:
             self.key_joints[key].reset()
 
-        self.set_key_frame_infos()
+        self.set_angle_and_axis1()
 
         self.global_axis = self.get_global_axis()
-        self.key_joints['a'].local_axis = self.key_joints['a'].get_local_axis(self.global_axis)
-        self.key_joints['b'].local_axis = self.key_joints['b'].get_local_axis(self.global_axis)
+        self.key_joints['a'].set_local_axis(self.global_axis, Step.FIRST)
+        self.key_joints['b'].set_local_axis(self.global_axis, Step.SECOND)
+        #self.key_joints['a'].local_axis = self.key_joints['a'].get_local_axis(self.global_axis)
+        #self.key_joints['b'].local_axis = self.key_joints['b'].get_local_axis(self.global_axis)
 
     # Move target end effector by keyboard input WASD+QE
     def move_end_effector(self, offset):
@@ -51,15 +49,15 @@ class LimbIK:
         self.key_joints['t'].global_pos = (pos_t_before[0] + offset[0], pos_t_before[1] + offset[1], pos_t_before[2] + offset[2])
 
         # Get alpha and beta different in first step.
-        if not self.get_diff_angles():
+        if not self.set_diff_angles():
             self.key_joints['t'].global_pos = pos_t_before
 
         # Get tau value and normal vector of ac't plane (second step)
-        self.set_for_second_step()
+        self.set_angle_and_axis2()
 
-    def set_for_second_step(self):
+    def set_angle_and_axis2(self):
         self.key_joints['a'].diff_angle2 = 0
-        self.set_key_frame_infos()
+        self.set_angle_and_axis1()
 
         # Set c_prime's global_pos
         self.key_joints['c_prime'].set_global_position()
@@ -75,7 +73,9 @@ class LimbIK:
         if not np.array_equal(vec_a_c_prime, vec_a_t):
             normal_vector = util.get_normal_vector(vec_a_c_prime, vec_a_t)
         self.global_axis2 = normal_vector
-        self.key_joints['a'].local_axis2 = self.key_joints['a'].get_local_axis(normal_vector)
+
+        self.key_joints['a'].set_local_axis(self.global_axis2, Step.SECOND)
+        #self.key_joints['a'].local_axis2 = self.key_joints['a'].get_local_axis(normal_vector)
 
         # Set a's diff angle2 for second step
         tau = 0
@@ -83,7 +83,7 @@ class LimbIK:
             tau = util.get_degree_between_vectors(vec_a_c_prime, vec_a_t)
         self.key_joints['a'].diff_angle2 = tau
 
-    def set_key_frame_infos(self):
+    def set_angle_and_axis1(self):
         for key in self.key_joints:
             self.key_joints[key].idx = -1
 
@@ -97,7 +97,7 @@ class LimbIK:
         self.save_key_frame_infos(root, self.key_frame)
         glPopMatrix()
 
-    def get_diff_angles(self):
+    def set_diff_angles(self):
         pos_a = self.key_joints['a'].global_pos
         pos_b = self.key_joints['b'].global_pos
         pos_c = self.key_joints['c'].global_pos
@@ -144,7 +144,7 @@ class LimbIK:
                 return key
         return None
 
-    def get_axis(self, key, step: Step):
+    def get_local_axis(self, key, step: Step):
         if step == Step.FIRST:
             return self.key_joints[key].local_axis
         else:
@@ -187,7 +187,7 @@ class LimbIK:
                 self.key_joints[key].transformation_matrix = matrix
                 self.key_joints[key].idx = self.joint_idx
 
-                local_axis = self.key_joints[key].get_local_axis(self.global_axis)
+                local_axis = self.key_joints[key].get_local_axis(Step.FIRST)
 
                 if key == 'a':
                     local_axis2 = self.key_joints['a'].local_axis2

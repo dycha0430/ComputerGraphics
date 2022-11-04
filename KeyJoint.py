@@ -1,5 +1,8 @@
 import numpy as np
-
+from enum import Enum
+class Step(Enum):
+    FIRST = 1
+    SECOND = 2
 
 class KeyJoint:
     def __init__(self, joint_name=""):
@@ -24,16 +27,28 @@ class KeyJoint:
         self.local_axis2 = np.array([0, 0, 0, 0])
         self.diff_angle2 = 0
 
-    def set_global_position(self):
+    def set_transformation_matrix(self, transformation_matrix):
+        self.transformation_matrix = transformation_matrix
         self.global_pos = self.get_global_position()
 
-    def get_global_position(self, test_x=0):
-        ret = self.transformation_matrix.T @ np.array([test_x, 0, 0, 1]).T
-        ret = ret[:-1]
-        return ret
+    def set_global_position(self):
+        global_position = self.transformation_matrix.T @ np.array([0, 0, 0, 1]).T
+        global_position = global_position[:-1]
+        self.global_pos = global_position
 
-    def get_local_axis(self, global_axis):
+    def get_global_position(self, test_x=0):
+        return self.global_pos
+
+    def set_local_axis(self, global_axis, step: Step):
         local_axis = global_axis @ self.transformation_matrix.T
 
         local_axis.squeeze()
-        return local_axis
+        if step == Step.FIRST:
+            self.local_axis = local_axis
+        else:
+            self.local_axis2 = local_axis
+    def get_local_axis(self, step: Step):
+        if step == Step.FIRST:
+            return self.local_axis
+        else:
+            return self.local_axis2
