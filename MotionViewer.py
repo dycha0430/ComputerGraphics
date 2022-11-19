@@ -1,8 +1,4 @@
 import sys
-
-from PyQt5.QtCore import QSize
-from PyQt5.QtGui import QIcon, QPixmap, QIntValidator
-
 import StyleSheet
 from Renderer import *
 from CameraController import CameraController
@@ -10,6 +6,8 @@ from Motion import *
 
 # For PyQt5
 from PyQt5 import QtCore, QtOpenGL, QtWidgets
+from PyQt5.QtCore import QSize
+from PyQt5.QtGui import QIcon, QPixmap, QIntValidator
 
 ###########################################################
 # Global renderer

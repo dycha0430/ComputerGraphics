@@ -1,3 +1,5 @@
+import numpy as np
+
 class Posture:
     def __init__(self, line):
         self.values = []

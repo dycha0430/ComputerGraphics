@@ -120,6 +120,48 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
             self.draw_frame_recursively(child, render_key_frame)
         glPopMatrix()
 
+
+    def set_posture_matrix(self, joint, render_key_frame):
+        glPushMatrix()
+        # Draw link.
+        glBegin(GL_LINES)
+        glVertex3fv(np.array([0, 0, 0]))
+        glVertex3fv(np.array([joint.offset[0], joint.offset[1], joint.offset[2]]))
+        glEnd()
+
+        # Translate or Rotate joint offset.
+        glTranslatef(joint.offset[0], joint.offset[1], joint.offset[2])
+        if render_key_frame:
+            glColor3ub(255, 0, 0)
+
+        self.joint_idx += 1
+
+        if joint.isEndEffector:
+            glPopMatrix()
+            return
+
+        self.transform_by_channel(self.rendering_frame)
+
+        if render_key_frame or (self.limb_ik.get_key_frame() >= 0 and self.warping_interval > 0):
+            key = self.limb_ik.get_joint_key(self.joint_idx)
+            if key is not None:
+                if render_key_frame:
+                    glColor3ub(255, 255, 0)
+                local_axis2 = self.limb_ik.get_local_axis(key, Step.SECOND)
+                diff_angle2 = self.limb_ik.get_degree(key, Step.SECOND)
+                diff_angle2 = self.get_warping_angle(diff_angle2)
+                glRotatef(diff_angle2, local_axis2[0], local_axis2[1], local_axis2[2])
+
+                local_axis = self.limb_ik.get_local_axis(key, Step.FIRST)
+                diff_angle = self.limb_ik.get_degree(key, Step.FIRST)
+                diff_angle = self.get_warping_angle(diff_angle)
+                glRotatef(diff_angle, local_axis[0], local_axis[1], local_axis[2])
+
+        for child in joint.children:
+            self.draw_frame_recursively(child, render_key_frame)
+        glPopMatrix()
+
+
     def transform_by_channel(self, frame):
         for chanType in self.bvh_motion.channels[self.channels_idx]:
             val = float(self.bvh_motion.get_value_in_frame(frame, self.posture_idx))
