@@ -1,6 +1,6 @@
 import numpy as np
 import Util
-from Force import GravityForce
+from Force import GravityForce, SpringForce
 
 class ParticleSystem:
     def __init__(self, num):
@@ -15,17 +15,33 @@ class ParticleSystem:
 
     def init_particles(self, src):
         for i in range(self.num):
-            self.particles[i].x = np.array([src[i * 3], src[i * 3 + 1], src[i * 3 + 2]])
+            self.particles[i].x = np.array(src[i])
+
+    def init_springs(self, indeces1, indeces2, num):
+        particles1 = []
+        particles2 = []
+        rest_lengths = []
+
+        for i in range(num):
+            p1 = self.particles[indeces1[i]]
+            p2 = self.particles[indeces2[i]]
+            particles1.append(p1)
+            particles2.append(p2)
+            rest_lengths.append(np.linalg.norm(p1.x - p2.x))
+
+        self.forces.append(SpringForce(particles1, particles2, rest_lengths, num))
 
     def get_dims(self):
         return 6 * self.num
 
     def get_positions(self):
-        dst = np.array([])
+        dst = []
         for particle in self.particles:
-            dst = np.append(dst, particle.x[0])
-            dst = np.append(dst, particle.x[1])
-            dst = np.append(dst, particle.x[2])
+            dst.append([particle.x[0],  particle.x[1],  particle.x[2]])
+            # dst = np.append(dst, np.array())
+            # dst = np.append(dst, particle.x[0])
+            # dst = np.append(dst, particle.x[1])
+            # dst = np.append(dst, particle.x[2])
 
         return dst
 
@@ -45,7 +61,6 @@ class ParticleSystem:
         for i in range(self.num):
             self.particles[i].x = np.array([src[i * 6], src[i * 6 + 1], src[i * 6 + 2]])
             self.particles[i].v = np.array([src[i * 6 + 3], src[i * 6 + 4], src[i * 6 + 5]])
-            #print(self.particles[i].x)
 
     def calculate_derivative(self):
         self.clear_forces()

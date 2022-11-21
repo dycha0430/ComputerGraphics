@@ -72,7 +72,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.initGUI()
         
         timer = QtCore.QTimer(self)
-        timer.setInterval(10) # period, in milliseconds
+        timer.setInterval(33) # period, in milliseconds
         timer.timeout.connect(self.glWidget.updateGL)
         timer.start()
 
