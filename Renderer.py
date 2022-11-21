@@ -217,6 +217,7 @@ class BackgroundRenderer(Renderer, metaclass=ABCMeta):
 
         self.render_axis()
 
+
     def render_axis(self):
         glColor3ub(255, 0, 0)
         glBegin(GL_LINES)
@@ -236,3 +237,4 @@ class BackgroundRenderer(Renderer, metaclass=ABCMeta):
         glVertex3fv(np.array([0, 0, 1]))
         glColor3ub(255, 255, 255)
         glEnd()
+

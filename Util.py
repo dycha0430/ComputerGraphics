@@ -38,3 +38,43 @@ def get_current_transformation_matrix():
     a = (GLfloat * 16)()
     glGetFloatv(GL_MODELVIEW_MATRIX, a)
     return np.reshape(np.array(a), (4, 4))
+
+
+def add_vectors(vec1, vec2):
+    dst = np.array([])
+    for i in range(min(len(vec1), len(vec2))):
+        dst = np.append(dst, vec1[i] + vec2[i])
+
+    return dst
+
+
+def scale_vector(vec, delta_t):
+    dst = np.array([])
+    for i in range(len(vec)):
+        dst = np.append(dst, vec[i] * delta_t)
+
+    return dst
+
+
+# y = 0인 바닥면을 기준으로..
+def detect_collision(pos, velocity):
+    eps = 0.01
+    N = np.array([0, 1, 0])
+    P = np.array([0, 0, 0])
+    diff = np.subtract(pos, P)
+    if np.inner(diff, N) < eps and np.inner(N, velocity) < 0:
+        return True
+    return False
+
+
+def response_collision(velocity):
+    k_r = 0.5
+
+    v_n = np.array([0, velocity[1], 0])
+    v_t = np.array([velocity[0], 0, velocity[2]])
+
+    counter_velocity = np.add(v_t, -k_r * v_n)
+    threshold = 0.00001
+    if np.linalg.norm(counter_velocity) < threshold:
+        counter_velocity = np.array([0, 0, 0])
+    return counter_velocity

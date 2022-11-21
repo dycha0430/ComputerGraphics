@@ -1,6 +1,7 @@
 import sys
 import StyleSheet
 from Renderer import *
+from ParticleRenderer import *
 from CameraController import CameraController
 from Motion import *
 
@@ -18,8 +19,10 @@ class Viewer:
     def __init__(self, bvh_motion):
         self.renderers = []
         self.bvh_renderer = BvhRenderer(bvh_motion)
+        self.particle_renderer = ParticleRenderer()
         self.camera_controller = CameraController()
         self.renderers.append(self.bvh_renderer)
+        self.renderers.append(self.particle_renderer)
         self.renderers.append(BackgroundRenderer())
         
     def render(self):
@@ -76,8 +79,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self.frame_timer = QtCore.QTimer(self)
         self.frame_timer.timeout.connect(self.update_frame)
 
+        self.simulation_time_stamp = 1/1000
+        simulation_timer = QtCore.QTimer(self)
+        simulation_timer.setInterval(int(self.simulation_time_stamp * 1000)) # 1/1000 s
+        simulation_timer.timeout.connect(self.simulate_particle)
+        simulation_timer.start()
+
         self.button_left_pressed = False
         self.button_right_pressed = False
+
+    def simulate_particle(self):
+        global viewer
+        viewer.particle_renderer.particle_system.update_state(self.simulation_time_stamp)
 
     def initGUI(self):
         central_widget = QtWidgets.QWidget()
