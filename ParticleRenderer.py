@@ -34,7 +34,7 @@ class ParticleRenderer(Renderer, metaclass=ABCMeta):
         glColor3ub(255, 255, 255)
 
     def create_mass_spring_model(self):
-        height = 5
+        height = 2
         particles = []
         particles.append([0, 0+height, 0])
         particles.append([1, 0+height, 0])
@@ -44,12 +44,10 @@ class ParticleRenderer(Renderer, metaclass=ABCMeta):
         particles.append([1, 1 + height, 0])
         particles.append([0, 1 + height, 1])
         particles.append([1, 1 + height, 1])
-        # particles = np.append(particles, np.array([0, 0, 0]))
-        # particles = np.append(particles, np.array([0, 1, 0]))
-        # particles = np.append(particles, np.array([0, 0, 1]))
-        # particles = np.append(particles, np.array([0, 1, 1]))
-        self.spring_indeces1 = np.array([0, 0, 1, 1, 2, 0, 1, 2, 3, 4, 4, 5, 5, 6, 1, 1, 3, 0, 4])
-        self.spring_indeces2 = np.array([1, 2, 2, 3, 3, 4, 5, 6, 7, 5, 6, 6, 7, 7, 4, 7, 6, 6, 7])
 
-        self.particle_system.init_particles(particles)
+        weights = [2, 2, 2, 2, 2, 2, 2, 2]
+        self.spring_indeces1 = np.array([0, 0, 1, 1, 2, 0, 1, 2, 3, 4, 4, 5, 5, 6, 1, 1, 3, 0, 4, 0, 0, 2, 3, 2])
+        self.spring_indeces2 = np.array([1, 2, 2, 3, 3, 4, 5, 6, 7, 5, 6, 6, 7, 7, 4, 7, 6, 6, 7, 3, 5, 4, 5, 7])
+
+        self.particle_system.init_particles(particles, weights)
         self.particle_system.init_springs(self.spring_indeces1, self.spring_indeces2, len(self.spring_indeces1))

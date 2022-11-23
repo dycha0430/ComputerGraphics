@@ -13,9 +13,10 @@ class ParticleSystem:
         self.forces.append(GravityForce(self.particles))
         # append more ...
 
-    def init_particles(self, src):
+    def init_particles(self, src, weights):
         for i in range(self.num):
             self.particles[i].x = np.array(src[i])
+            self.particles[i].m = weights[i]
 
     def init_springs(self, indeces1, indeces2, num):
         particles1 = []
@@ -62,11 +63,11 @@ class ParticleSystem:
             self.particles[i].x = np.array([src[i * 6], src[i * 6 + 1], src[i * 6 + 2]])
             self.particles[i].v = np.array([src[i * 6 + 3], src[i * 6 + 4], src[i * 6 + 5]])
 
-    def calculate_derivative(self):
+    def calculate_derivative(self, delta_t):
         self.clear_forces()
         # self.compute_forces()
         for force in self.forces:
-            force.compute_force()
+            force.compute_force(delta_t)
 
         dst = np.array([])
         for particle in self.particles:
@@ -88,15 +89,30 @@ class ParticleSystem:
             particle.f = np.array([0, 0, 0])
 
     def euler_step(self, delta_t: float):
-        tmp1 = self.calculate_derivative()
+        tmp1 = self.calculate_derivative(delta_t)
         Util.scale_vector(tmp1, delta_t)
         tmp2 = self.get_state()
         tmp2 = Util.add_vectors(tmp1, tmp2)
         self.set_state(tmp2)
         self.time += delta_t
 
+    def semi_implicit_euler_step(self, delta_t: float):
+        tmp1 = self.calculate_derivative(delta_t)
+        Util.scale_vector(tmp1, delta_t)
+        tmp2 = self.get_state()
+        tmp3 = Util.add_vectors(tmp1, tmp2)
+        self.set_state(tmp3)
+        # collision 때매 v를 0으로 만들어도, 여기서 두 번 caculate_derivative 하면서
+        # 가속도를 v에 더하고, v를 x에 더하게 되면서 x가 계속 조금씩 변함..
+        # 어케 해결해야할지 모르겠음.
+        tmp4 = self.calculate_derivative(delta_t)
+        Util.scale_vector(tmp4, delta_t)
+        tmp5 = Util.add_vectors(tmp2, tmp4)
+        self.set_state(tmp5)
+
     def update_state(self, delta_t):
-        self.euler_step(delta_t)
+        # self.euler_step(delta_t)
+        self.semi_implicit_euler_step(delta_t)
         for particle in self.particles:
             ret = Util.detect_collision(particle.x, particle.v)
             if not ret:
