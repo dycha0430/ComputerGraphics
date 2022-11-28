@@ -58,7 +58,7 @@ def scale_vector(vec, delta_t):
 
 # y = 0인 바닥면을 기준으로..
 def detect_collision(pos, velocity):
-    eps = 0.00001
+    eps = 0.0001
     N = np.array([0, 1, 0])
     P = np.array([0, 0, 0])
     diff = np.subtract(pos, P)
@@ -75,7 +75,7 @@ def response_collision(velocity):
     v_t = np.array([velocity[0], 0, velocity[2]])
 
     counter_velocity = np.add(v_t, -k_r * v_n)
-    threshold = 0.001
+    threshold = 0.0001
     if np.linalg.norm(counter_velocity) < threshold:
         counter_velocity = np.array([0, 0, 0])
     return counter_velocity

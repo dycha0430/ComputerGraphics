@@ -65,10 +65,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.key_frame_check_box = QtWidgets.QCheckBox()
         self.warping_check_box = QtWidgets.QCheckBox()
 
+        self.kd_input = QtWidgets.QLineEdit()
+        self.ks_input = QtWidgets.QLineEdit()
+        self.integration_method_combo_box = QtWidgets.QComboBox()
+
         self.onlyInt = QIntValidator()
         self.time_input.setValidator(self.onlyInt)
         self.key_frame_input.setValidator(self.onlyInt)
         self.warping_input.setValidator(self.onlyInt)
+        self.kd_input.setValidator(self.onlyInt)
+        self.ks_input.setValidator(self.onlyInt)
+        self.rendering_square_btn = QtWidgets.QPushButton("", self)
+        self.rendering_particle_system_btn = QtWidgets.QPushButton("", self)
+
         self.initGUI()
         
         timer = QtCore.QTimer(self)
@@ -90,7 +99,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def simulate_particle(self):
         global viewer
-        viewer.particle_renderer.particle_system.update_state(self.simulation_time_stamp)
+        viewer.particle_renderer.simulate_particle(self.simulation_time_stamp)
 
     def initGUI(self):
         central_widget = QtWidgets.QWidget()
@@ -133,14 +142,74 @@ class MainWindow(QtWidgets.QMainWindow):
         self.warping_input.setPlaceholderText("Warping interval")
         warping_widget.addWidget(self.warping_input)
 
+        self.kd_input.returnPressed.connect(self.set_kd)
+        self.kd_input.setPlaceholderText("Set spring kd")
+        self.ks_input.returnPressed.connect(self.set_ks)
+        self.ks_input.setPlaceholderText("Set spring ks")
+
+        self.integration_method_combo_box.addItem("Semi-implicit Euler")
+        self.integration_method_combo_box.addItem("Euler")
+        self.integration_method_combo_box.currentIndexChanged.connect(self.change_integration_method)
+
+        self.rendering_square_btn.clicked.connect(self.rendering_square_btn_clicked)
+        self.set_rendering_btn_icon(False)
+        self.rendering_square_btn.setCheckable(True)
+
+        self.rendering_particle_system_btn.clicked.connect(self.rendering_particle_system_btn_clicked)
+        self.set_rendering_particle_system_btn_icon(False)
+
         widgets2.addLayout(key_frame_widget)
         widgets2.addLayout(warping_widget)
+        widgets2.addWidget(self.kd_input)
+        widgets2.addWidget(self.ks_input)
+        widgets2.addWidget(self.rendering_square_btn)
+        widgets2.addWidget(self.integration_method_combo_box)
+        widgets2.addWidget(self.rendering_particle_system_btn)
         widgets2.addStretch()
         # ------------------------------------
         whole_layout.addLayout(gui_layout, stretch = 4)
         whole_layout.addLayout(widgets2)
 
         central_widget.setLayout(whole_layout)
+
+    def rendering_particle_system_btn_clicked(self):
+        viewer.particle_renderer.set_render_particle_system()
+        if viewer.particle_renderer.rendering_particle_system:
+            self.set_rendering_particle_system_btn_icon(True)
+        else:
+            self.set_rendering_particle_system_btn_icon(False)
+
+    def set_rendering_particle_system_btn_icon(self, is_rendering):
+        if is_rendering:
+            self.rendering_particle_system_btn.setText("Stop particle simulation")
+        else:
+            self.rendering_particle_system_btn.setText("Start particle simulation")
+
+    def change_integration_method(self):
+        index = self.integration_method_combo_box.currentIndex()
+        viewer.particle_renderer.change_integration_method(index)
+
+    def rendering_square_btn_clicked(self):
+        viewer.particle_renderer.set_rendering_square()
+        if self.rendering_square_btn.isChecked():
+            self.rendering_square_btn.setCheckable(False)
+            self.set_rendering_btn_icon(True)
+        else:
+            self.rendering_square_btn.setCheckable(True)
+            self.set_rendering_btn_icon(False)
+
+    def set_rendering_btn_icon(self, is_rendering):
+        if is_rendering:
+            self.rendering_square_btn.setText("Stop square particle simulation")
+        else:
+            self.rendering_square_btn.setText("Start square particle simulation")
+    def set_kd(self):
+        kd = int(self.kd_input.text())
+        viewer.particle_renderer.set_spring_kd(kd)
+
+    def set_ks(self):
+        ks = int(self.ks_input.text())
+        viewer.particle_renderer.set_spring_ks(ks)
 
     def set_key_frame(self):
         if not self.key_frame_check_box.isChecked():
@@ -215,6 +284,7 @@ class MainWindow(QtWidgets.QMainWindow):
         global viewer
 
         ik_factor = 0.01
+        pointer_factor = 0.05
 
         focused_widget = QtWidgets.QApplication.focusWidget()
         if isinstance(focused_widget, QtWidgets.QLineEdit) or isinstance(focused_widget, QtWidgets.QCheckBox):
@@ -235,6 +305,20 @@ class MainWindow(QtWidgets.QMainWindow):
             viewer.bvh_renderer.move_end_effector([0, 0, -ik_factor])
         elif event.key() == QtCore.Qt.Key_E: # Front
             viewer.bvh_renderer.move_end_effector([0, 0, ik_factor])
+        elif event.key() == QtCore.Qt.Key_I:
+            viewer.particle_renderer.move_pointer([0, pointer_factor, 0])
+        elif event.key() == QtCore.Qt.Key_K:  # Down
+            viewer.particle_renderer.move_pointer([0, -pointer_factor, 0])
+        elif event.key() == QtCore.Qt.Key_J:  # Left
+            viewer.particle_renderer.move_pointer([-pointer_factor, 0, 0])
+        elif event.key() == QtCore.Qt.Key_L:  # Right
+            viewer.particle_renderer.move_pointer([pointer_factor, 0, 0])
+        elif event.key() == QtCore.Qt.Key_U:  # Back
+            viewer.particle_renderer.move_pointer([0, 0, -pointer_factor])
+        elif event.key() == QtCore.Qt.Key_O:  # Front
+            viewer.particle_renderer.move_pointer([0, 0, pointer_factor])
+        elif event.key() == QtCore.Qt.Key_Return:
+            viewer.particle_renderer.add_particle()
 
     def wheelEvent(self, event):
         y_offset = 0.005 * event.angleDelta().y()

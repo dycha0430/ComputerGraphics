@@ -217,6 +217,8 @@ class BackgroundRenderer(Renderer, metaclass=ABCMeta):
 
         self.render_axis()
 
+    def render_plane(self):
+        glBegin(GL_TRIANGLES)
 
     def render_axis(self):
         glColor3ub(255, 0, 0)
