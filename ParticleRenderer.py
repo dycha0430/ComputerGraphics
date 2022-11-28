@@ -7,22 +7,54 @@ from ParticleSystem import ParticleSystem
 
 class ParticleRenderer(Renderer, metaclass=ABCMeta):
     def __init__(self):
-        self.num_particle = 8
+        # For Cube
         self.square_particle_system = ParticleSystem()
-        self.spring_indeces1 = None
-        self.spring_indeces2 = None
+        self.square_spring_indices1 = None
+        self.square_spring_indices2 = None
         self.rendering_square = False
+
+        # For particle system made by user input
         self.particle_system = ParticleSystem()
         self.rendering_particle_system = False
         self.pointer = np.array([0, 0, 0])
+        self.clicked_particle_idx = -1
+        self.selected_particles_idx = []
+        self.spring_indices1 = []
+        self.spring_indices2 = []
 
         self.init_mass_spring_model()
+
+    def change_integration_method(self, method):
+        self.square_particle_system.change_integration_method(method)
+
+    def set_spring_kd(self, kd):
+        self.square_particle_system.set_spring_kd(kd)
+
+    def set_spring_ks(self, ks):
+        self.square_particle_system.set_spring_ks(ks)
+
+    def clear_selected_particle(self):
+        self.selected_particles_idx = []
 
     def render(self):
         self.render_pointer()
         self.render_particle_system()
         if self.rendering_square:
             self.render_square()
+
+    def click_particle(self, idx):
+        self.clicked_particle_idx = idx
+
+    def select_particle(self, idx):
+        self.selected_particles_idx.append(idx)
+
+    def remove_selected_particle(self, idx):
+        self.selected_particles_idx.pop(idx)
+
+    def contains_particle(self, idx):
+        if idx in self.selected_particles_idx:
+            return True
+        return False
 
     def simulate_particle(self, time_stamp):
         if self.rendering_square:
@@ -49,13 +81,32 @@ class ParticleRenderer(Renderer, metaclass=ABCMeta):
     def add_particle(self):
         self.particle_system.add_particle(self.pointer, 1)
 
+    def add_spring(self):
+        idx1 = self.selected_particles_idx[0]
+        idx2 = self.selected_particles_idx[1]
+        self.spring_indices1.append(idx1)
+        self.spring_indices2.append(idx2)
+        self.particle_system.add_spring(idx1, idx2)
+
     def render_particle_system(self):
         positions = self.particle_system.get_positions()
-        glColor3ub(0, 102, 0)
+        glColor3ub(51, 255, 255)
         glPointSize(10.0)
         glBegin(GL_POINTS)
-        for pos in positions:
+        for i, pos in enumerate(positions):
+            if i == self.clicked_particle_idx:
+                glColor3ub(255, 51, 255)
             glVertex3fv(np.array([pos[0], pos[1], pos[2]]))
+            if i == self.clicked_particle_idx:
+                glColor3ub(51, 255, 255)
+        glEnd()
+
+        glBegin(GL_LINES)
+        for i in range(len(self.spring_indices1)):
+            pos1 = positions[self.spring_indices1[i]]
+            pos2 = positions[self.spring_indices2[i]]
+            glVertex3fv(np.array([pos1[0], pos1[1], pos1[2]]))
+            glVertex3fv(np.array([pos2[0], pos2[1], pos2[2]]))
         glEnd()
         glColor3ub(255, 255, 255)
 
@@ -63,20 +114,12 @@ class ParticleRenderer(Renderer, metaclass=ABCMeta):
 
 
 
-    def change_integration_method(self, method):
-        self.square_particle_system.change_integration_method(method)
 
-    def set_spring_kd(self, kd):
-        self.square_particle_system.set_spring_kd(kd)
-
-    def set_spring_ks(self, ks):
-        self.square_particle_system.set_spring_ks(ks)
-
+    # Cube particle model rendering for test.
     def set_rendering_square(self):
         if not self.rendering_square:
             self.square_particle_system.init_particles()
         self.rendering_square = not self.rendering_square
-
 
     def render_square(self):
         positions = self.square_particle_system.get_positions()
@@ -89,9 +132,9 @@ class ParticleRenderer(Renderer, metaclass=ABCMeta):
         glEnd()
 
         glBegin(GL_LINES)
-        for i in range(len(self.spring_indeces1)):
-            pos1 = positions[self.spring_indeces1[i]]
-            pos2 = positions[self.spring_indeces2[i]]
+        for i in range(len(self.square_spring_indices1)):
+            pos1 = positions[self.square_spring_indices1[i]]
+            pos2 = positions[self.square_spring_indices2[i]]
             glVertex3fv(np.array([pos1[0], pos1[1], pos1[2]]))
             glVertex3fv(np.array([pos2[0], pos2[1], pos2[2]]))
 
@@ -101,21 +144,14 @@ class ParticleRenderer(Renderer, metaclass=ABCMeta):
 
     def init_mass_spring_model(self):
         height = 2
-        particles = []
-        particles.append([0, 0+height, 0])
-        particles.append([1, 0+height, 0])
-        particles.append([0, 0+height, 1])
-        particles.append([1, 0+height, 1])
-        particles.append([0, 1 + height, 0])
-        particles.append([1, 1 + height, 0])
-        particles.append([0, 1 + height, 1])
-        particles.append([1, 1 + height, 1])
+        particles = [[0, 0 + height, 0], [1, 0 + height, 0], [0, 0 + height, 1], [1, 0 + height, 1], [0, 1 + height, 0],
+                     [1, 1 + height, 0], [0, 1 + height, 1], [1, 1 + height, 1]]
 
         for particle in particles:
             self.square_particle_system.add_particle(particle, 2)
 
-        self.spring_indeces1 = np.array([0, 0, 1, 1, 2, 0, 1, 2, 3, 4, 4, 5, 5, 6, 1, 1, 3, 0, 4, 0, 0, 2, 3, 2])
-        self.spring_indeces2 = np.array([1, 2, 2, 3, 3, 4, 5, 6, 7, 5, 6, 6, 7, 7, 4, 7, 6, 6, 7, 3, 5, 4, 5, 7])
+        self.square_spring_indices1 = np.array([0, 0, 1, 1, 2, 0, 1, 2, 3, 4, 4, 5, 5, 6, 1, 1, 3, 0, 4, 0, 0, 2, 3, 2])
+        self.square_spring_indices2 = np.array([1, 2, 2, 3, 3, 4, 5, 6, 7, 5, 6, 6, 7, 7, 4, 7, 6, 6, 7, 3, 5, 4, 5, 7])
 
-        for i in range(len(self.spring_indeces1)):
-            self.square_particle_system.add_spring(self.spring_indeces1[i], self.spring_indeces2[i])
+        for i in range(len(self.square_spring_indices1)):
+            self.square_particle_system.add_spring(self.square_spring_indices1[i], self.square_spring_indices2[i])

@@ -78,6 +78,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self.rendering_square_btn = QtWidgets.QPushButton("", self)
         self.rendering_particle_system_btn = QtWidgets.QPushButton("", self)
 
+        self.particle_list_title = QtWidgets.QLineEdit()
+        self.particle_list_title.setText("Particles")
+        self.particle_list_title.setReadOnly(True)
+        self.particle_list_title.setStyleSheet("* { background-color: rgba(0, 0, 0, 0); border: none;}")
+        self.particle_list = QtWidgets.QListWidget()
+        self.selected_particle_list_title = QtWidgets.QLineEdit()
+        self.selected_particle_list_title.setText("Selected Particles")
+        self.selected_particle_list_title.setReadOnly(True)
+        self.selected_particle_list_title.setStyleSheet("* { background-color: rgba(0, 0, 0, 0); border: none;}")
+        self.selected_particle_list = QtWidgets.QListWidget()
+        self.add_spring_btn = QtWidgets.QPushButton("Add Spring", self)
+
         self.initGUI()
         
         timer = QtCore.QTimer(self)
@@ -158,6 +170,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.rendering_particle_system_btn.clicked.connect(self.rendering_particle_system_btn_clicked)
         self.set_rendering_particle_system_btn_icon(False)
 
+        self.particle_list.itemClicked.connect(self.particle_clicked)
+        self.particle_list.itemDoubleClicked.connect(self.particle_double_clicked)
+
+        self.selected_particle_list.itemDoubleClicked.connect(self.selected_particle_double_clicked)
+        self.add_spring_btn.clicked.connect(self.add_spring)
+
         widgets2.addLayout(key_frame_widget)
         widgets2.addLayout(warping_widget)
         widgets2.addWidget(self.kd_input)
@@ -165,12 +183,43 @@ class MainWindow(QtWidgets.QMainWindow):
         widgets2.addWidget(self.rendering_square_btn)
         widgets2.addWidget(self.integration_method_combo_box)
         widgets2.addWidget(self.rendering_particle_system_btn)
+
+        widgets2.addWidget(self.particle_list_title)
+        widgets2.addWidget(self.particle_list)
+        widgets2.addWidget(self.selected_particle_list_title)
+        widgets2.addWidget(self.selected_particle_list)
+        widgets2.addWidget(self.add_spring_btn)
         widgets2.addStretch()
         # ------------------------------------
         whole_layout.addLayout(gui_layout, stretch = 4)
         whole_layout.addLayout(widgets2)
 
         central_widget.setLayout(whole_layout)
+
+    def add_spring(self):
+        if self.selected_particle_list.count() != 2:
+            return
+        viewer.particle_renderer.add_spring()
+        self.selected_particle_list.clear()
+        viewer.particle_renderer.clear_selected_particle()
+
+    def selected_particle_double_clicked(self):
+        index = self.selected_particle_list.currentRow()
+        viewer.particle_renderer.remove_selected_particle(index)
+        self.selected_particle_list.takeItem(index)
+
+    def particle_clicked(self):
+        index = self.particle_list.currentRow()
+        viewer.particle_renderer.click_particle(index)
+
+    def particle_double_clicked(self):
+        if self.selected_particle_list.count() >= 2:
+            return
+        index = self.particle_list.currentRow()
+        if viewer.particle_renderer.contains_particle(index):
+            return
+        viewer.particle_renderer.select_particle(index)
+        self.selected_particle_list.addItem("Particle " + str(index))
 
     def rendering_particle_system_btn_clicked(self):
         viewer.particle_renderer.set_render_particle_system()
@@ -319,6 +368,7 @@ class MainWindow(QtWidgets.QMainWindow):
             viewer.particle_renderer.move_pointer([0, 0, pointer_factor])
         elif event.key() == QtCore.Qt.Key_Return:
             viewer.particle_renderer.add_particle()
+            self.particle_list.addItem("Particle " + str(self.particle_list.count()))
 
     def wheelEvent(self, event):
         y_offset = 0.005 * event.angleDelta().y()
