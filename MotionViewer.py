@@ -89,6 +89,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.selected_particle_list_title.setStyleSheet("* { background-color: rgba(0, 0, 0, 0); border: none;}")
         self.selected_particle_list = QtWidgets.QListWidget()
         self.add_spring_btn = QtWidgets.QPushButton("Add Spring", self)
+        self.move_mode_check_box = QtWidgets.QCheckBox("Move particle mode")
 
         self.initGUI()
         
@@ -176,6 +177,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.selected_particle_list.itemDoubleClicked.connect(self.selected_particle_double_clicked)
         self.add_spring_btn.clicked.connect(self.add_spring)
 
+        self.move_mode_check_box.stateChanged.connect(self.change_move_mode)
+
         widgets2.addLayout(key_frame_widget)
         widgets2.addLayout(warping_widget)
         widgets2.addWidget(self.kd_input)
@@ -189,12 +192,21 @@ class MainWindow(QtWidgets.QMainWindow):
         widgets2.addWidget(self.selected_particle_list_title)
         widgets2.addWidget(self.selected_particle_list)
         widgets2.addWidget(self.add_spring_btn)
+        widgets2.addWidget(self.move_mode_check_box)
         widgets2.addStretch()
         # ------------------------------------
         whole_layout.addLayout(gui_layout, stretch = 4)
         whole_layout.addLayout(widgets2)
 
         central_widget.setLayout(whole_layout)
+
+    def change_move_mode(self):
+        if self.selected_particle_list.count() > 1:
+            return
+        elif self.selected_particle_list.count() == 1:
+            viewer.particle_renderer.change_move_mode(select_particle=True)
+        else:
+            viewer.particle_renderer.change_move_mode()
 
     def add_spring(self):
         if self.selected_particle_list.count() != 2:
@@ -366,7 +378,7 @@ class MainWindow(QtWidgets.QMainWindow):
             viewer.particle_renderer.move_pointer([0, 0, -pointer_factor])
         elif event.key() == QtCore.Qt.Key_O:  # Front
             viewer.particle_renderer.move_pointer([0, 0, pointer_factor])
-        elif event.key() == QtCore.Qt.Key_Return:
+        elif event.key() == QtCore.Qt.Key_Shift:
             viewer.particle_renderer.add_particle()
             self.particle_list.addItem("Particle " + str(self.particle_list.count()))
 

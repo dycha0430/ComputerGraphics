@@ -22,7 +22,17 @@ class ParticleRenderer(Renderer, metaclass=ABCMeta):
         self.spring_indices1 = []
         self.spring_indices2 = []
 
+        self.pointer_linked_particle_idx = 0
+
         self.init_mass_spring_model()
+
+    def change_move_mode(self, select_particle=False):
+        if select_particle:
+            self.pointer_linked_particle_idx = self.selected_particles_idx[0]
+            self.particle_system.change_move_mode(selected_particle=self.selected_particles_idx[0])
+        else:
+            self.pointer_linked_particle_idx = 0
+            self.particle_system.change_move_mode()
 
     def change_integration_method(self, method):
         self.square_particle_system.change_integration_method(method)
@@ -77,6 +87,7 @@ class ParticleRenderer(Renderer, metaclass=ABCMeta):
 
     def move_pointer(self, offset):
         self.pointer = np.array([self.pointer[0] + offset[0], self.pointer[1] + offset[1], self.pointer[2] + offset[2]])
+        self.particle_system.set_pointer_particle(self.pointer)
 
     def add_particle(self):
         self.particle_system.add_particle(self.pointer, 1)
@@ -108,7 +119,21 @@ class ParticleRenderer(Renderer, metaclass=ABCMeta):
             glVertex3fv(np.array([pos1[0], pos1[1], pos1[2]]))
             glVertex3fv(np.array([pos2[0], pos2[1], pos2[2]]))
         glEnd()
+
+        if self.particle_system.move_mode:
+            glBegin(GL_LINES)
+            glVertex3fv(self.pointer)
+            pos = positions[self.pointer_linked_particle_idx]
+            glVertex3fv(np.array([pos[0], pos[1], pos[2]]))
+            glEnd()
+
         glColor3ub(255, 255, 255)
+
+
+
+
+
+
 
 
 

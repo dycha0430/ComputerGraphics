@@ -15,6 +15,21 @@ class ParticleSystem:
         self.forces.append(self.gravity_force)
         self.integration_method = 0
 
+        self.move_mode = False
+        self.pointer_particle = Particle()
+
+    def set_pointer_particle(self, pointer):
+        self.pointer_particle.x = pointer
+
+    def change_move_mode(self, selected_particle=0):
+        self.move_mode = not self.move_mode
+        if self.num == 0:
+            return
+        if self.move_mode:
+            self.spring_force.add_spring(self.particles[selected_particle], self.pointer_particle, is_pointer=True)
+        else:
+            self.spring_force.remove_spring()
+
     def change_integration_method(self, method):
         self.integration_method = method
 

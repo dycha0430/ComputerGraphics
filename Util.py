@@ -69,7 +69,7 @@ def detect_collision(pos, velocity):
 
 
 def response_collision(velocity):
-    k_r = 0.9
+    k_r = 0.6
 
     v_n = np.array([0, velocity[1], 0])
     v_t = np.array([velocity[0], 0, velocity[2]])
