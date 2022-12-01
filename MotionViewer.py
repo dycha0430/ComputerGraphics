@@ -345,7 +345,7 @@ class MainWindow(QtWidgets.QMainWindow):
         global viewer
 
         ik_factor = 0.01
-        pointer_factor = 0.05
+        pointer_factor = 0.01
 
         focused_widget = QtWidgets.QApplication.focusWidget()
         if isinstance(focused_widget, QtWidgets.QLineEdit) or isinstance(focused_widget, QtWidgets.QCheckBox):

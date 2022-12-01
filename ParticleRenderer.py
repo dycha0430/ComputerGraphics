@@ -35,6 +35,7 @@ class ParticleRenderer(Renderer, metaclass=ABCMeta):
             self.particle_system.change_move_mode()
 
     def change_integration_method(self, method):
+        self.particle_system.change_integration_method(method)
         self.square_particle_system.change_integration_method(method)
 
     def set_spring_kd(self, kd):
