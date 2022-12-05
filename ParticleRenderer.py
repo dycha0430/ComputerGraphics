@@ -12,6 +12,7 @@ class ParticleRenderer(Renderer, metaclass=ABCMeta):
         self.square_spring_indices1 = None
         self.square_spring_indices2 = None
         self.rendering_square = False
+        self.square_particle_system.add_plane_collider(np.array([0, 0, 0]), np.array([0, 1, 0]))
 
         # For particle system made by user input
         self.particle_system = ParticleSystem()
@@ -21,6 +22,7 @@ class ParticleRenderer(Renderer, metaclass=ABCMeta):
         self.selected_particles_idx = []
         self.spring_indices1 = []
         self.spring_indices2 = []
+        self.particle_system.add_plane_collider(np.array([0, 0, 0]), np.array([0, 1, 0]))
 
         self.pointer_linked_particle_idx = 0
 

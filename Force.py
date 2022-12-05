@@ -7,7 +7,7 @@ class Force(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def compute_force(self, delta_t):
+    def apply_force(self, delta_t):
         pass
 
 
@@ -23,7 +23,7 @@ class GravityForce(Force, metaclass=ABCMeta):
     def add_particle(self, particle):
         self.affected_particles.append(particle)
 
-    def compute_force(self, delta_t):
+    def apply_force(self, delta_t):
         for particle in self.affected_particles:
             particle.accumulate_force(particle.m * self.G * delta_t * delta_t)
 
@@ -36,7 +36,7 @@ class SpringForce(Force, metaclass=ABCMeta):
         self.rest_lengths = []
         self.num_spring = 0
         self.kd = 50
-        self.ks = 100000
+        self.ks = 10
 
     def remove_spring(self):
         self.particles1.pop(0)
@@ -67,7 +67,7 @@ class SpringForce(Force, metaclass=ABCMeta):
     def set_ks(self, ks):
         self.ks = ks
 
-    def compute_force(self, delta_t):
+    def apply_force(self, delta_t):
         for i in range(self.num_spring):
             p1 = self.particles1[i]
             p2 = self.particles2[i]
@@ -78,19 +78,7 @@ class SpringForce(Force, metaclass=ABCMeta):
             f1 = self.ks * (len_delta_x - r) + self.kd * (np.inner(delta_v, delta_x) / len_delta_x)
             f1 = -1 * f1
             f1 = f1 * delta_x / len_delta_x
-            f1 *= delta_t * delta_t
+            f1 *= delta_t
             f2 = -1 * f1
             self.particles1[i].accumulate_force(f1)
             self.particles2[i].accumulate_force(f2)
-
-
-class FrictionForce(Force, metaclass=ABCMeta):
-    def __init__(self):
-        self.particles = []
-        pass
-
-    def init_particles(self, particles):
-        self.particles = particles
-
-    def compute_force(self, delta_t):
-        pass

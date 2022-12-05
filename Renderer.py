@@ -23,6 +23,8 @@ class BvhRenderer(Renderer, metaclass=ABCMeta):
         self.channels_idx = 0
         self.joint_idx = -1
 
+
+
     def get_bvh(self):
         return self.bvh_motion
 

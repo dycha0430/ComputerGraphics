@@ -1,6 +1,8 @@
 import numpy as np
 import Util
 from Force import GravityForce, SpringForce
+from Collider import Collider, PlaneCollider, CollisionType
+from typing import List
 
 
 class ParticleSystem:
@@ -17,6 +19,11 @@ class ParticleSystem:
 
         self.move_mode = False
         self.pointer_particle = Particle()
+
+        self.colliders: List[Collider] = []
+
+    def add_plane_collider(self, point, norm_vec):
+        self.colliders.append(PlaneCollider(point, norm_vec))
 
     def set_pointer_particle(self, pointer):
         self.pointer_particle.x = pointer
@@ -91,7 +98,7 @@ class ParticleSystem:
         # self.compute_forces()
 
         for force in self.forces:
-            force.compute_force(delta_t)
+            force.apply_force(delta_t)
 
         dst = np.array([])
         for particle in self.particles:
@@ -139,19 +146,21 @@ class ParticleSystem:
 
     def process_collision(self):
         for particle in self.particles:
-            ret = Util.detect_collision(particle.x, particle.v)
-            if not ret:
-                continue
-            particle.v = Util.response_collision(particle.v)
+            for collider in self.colliders:
+                ret = collider.detect_collision(particle.x, particle.v)
+                if ret == CollisionType.COLLIDE:
+                    particle.v = collider.response_collision(particle.v)
+                elif ret == CollisionType.CONTACT:
+                    collider.apply_friction_force(particle)
 
     def process_stopped_particle(self):
         for particle in self.particles:
-            ret = Util.detect_collision(particle.x, particle.v)
-            if not ret:
-                continue
-            after_v = Util.response_collision(particle.v)
-            if after_v[0] == 0 and after_v[1] == 0 and after_v[2] == 0:
-                particle.v = after_v
+            for collider in self.colliders:
+                ret = collider.detect_collision(particle.x, particle.v)
+                if ret == CollisionType.CONTACT or ret == CollisionType.COLLIDE:
+                    after_v = collider.response_collision(particle.v)
+                    if after_v[0] == 0 and after_v[1] == 0 and after_v[2] == 0:
+                        particle.v = after_v
 
 
 class Particle:
