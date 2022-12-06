@@ -95,10 +95,11 @@ class ParticleSystem:
 
     def calculate_derivative(self, delta_t):
         self.clear_forces()
-        # self.compute_forces()
 
         for force in self.forces:
             force.apply_force(delta_t)
+
+        self.apply_friction_force()
 
         dst = np.array([])
         for particle in self.particles:
@@ -130,8 +131,9 @@ class ParticleSystem:
         tmp3 = Util.add_vectors(tmp1, tmp2)
         self.set_state(tmp3)
 
-        self.process_stopped_particle()
         tmp4 = self.calculate_derivative(delta_t)
+
+        tmp4 = self.process_stopped_particle(tmp4)
         Util.scale_vector(tmp4, delta_t)
         tmp5 = Util.add_vectors(tmp2, tmp4)
         self.set_state(tmp5)
@@ -150,17 +152,30 @@ class ParticleSystem:
                 ret = collider.detect_collision(particle.x, particle.v)
                 if ret == CollisionType.COLLIDE:
                     particle.v = collider.response_collision(particle.v)
-                elif ret == CollisionType.CONTACT:
-                    collider.apply_friction_force(particle)
 
-    def process_stopped_particle(self):
+    def apply_friction_force(self):
         for particle in self.particles:
             for collider in self.colliders:
                 ret = collider.detect_collision(particle.x, particle.v)
-                if ret == CollisionType.CONTACT or ret == CollisionType.COLLIDE:
-                    after_v = collider.response_collision(particle.v)
-                    if after_v[0] == 0 and after_v[1] == 0 and after_v[2] == 0:
-                        particle.v = after_v
+                if ret == CollisionType.CONTACT:
+                    collider.apply_friction_force(particle)
+
+    def process_stopped_particle(self, derivative):
+        for i, particle in enumerate(self.particles):
+            for collider in self.colliders:
+                ret = collider.detect_collision(particle.x, particle.v)
+                if ret == CollisionType.CONTACT:
+                    norm_v = collider.get_normal_component(np.array([derivative[i*6], derivative[i*6+1], derivative[i*6+2]]))
+                    derivative[i*6] -= norm_v[0]
+                    derivative[i * 6+1] -= norm_v[1]
+                    derivative[i * 6+2] -= norm_v[2]
+                    norm_f = collider.get_normal_component(np.array([derivative[i*6+3], derivative[i*6+4], derivative[i*6+5]]))
+                    derivative[i * 6 + 3] -= norm_f[0]
+                    derivative[i * 6 + 4] -= norm_f[1]
+                    derivative[i * 6 + 5] -= norm_f[2]
+
+        return derivative
+
 
 
 class Particle:

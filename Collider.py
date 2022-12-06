@@ -32,6 +32,10 @@ class PlaneCollider(Collider, metaclass=ABCMeta):
         self.norm_vec = norm_vec / np.linalg.norm(norm_vec)
         self.point = point
 
+    def get_normal_component(self, vec):
+        norm_v = np.inner(vec, self.norm_vec) * self.norm_vec
+        return norm_v
+
     def detect_collision(self, pos, velocity):
         eps = 0.0001
         N = self.norm_vec
@@ -61,8 +65,11 @@ class PlaneCollider(Collider, metaclass=ABCMeta):
     def apply_friction_force(self, particle):
         coefficient = 0.3
         v_t = particle.v
+        len_v_t = Util.get_vector_length(v_t)
+        if len_v_t == 0:
+            return
         f_n = np.inner(particle.f, self.norm_vec)
-        friction_force = -coefficient * Util.get_vector_length(f_n) * v_t / Util.get_vector_length(v_t)
+        friction_force = -coefficient * Util.get_vector_length(f_n) * v_t / len_v_t
         particle.accumulate_force(friction_force)
 
 
