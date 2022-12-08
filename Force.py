@@ -38,21 +38,23 @@ class SpringForce(Force, metaclass=ABCMeta):
         self.kd = 50
         self.ks = 10
 
-    def remove_spring(self):
-        self.particles1.pop(0)
-        self.particles2.pop(0)
-        self.rest_lengths.pop(0)
+    def remove_spring(self, particle):
+        if particle in self.particles1:
+            idx = self.particles1.index(particle)
+            self.particles1.pop(idx)
+            self.particles2.pop(idx)
+            self.rest_lengths.pop(idx)
+        elif particle in self.particles2:
+            idx = self.particles2.index(particle)
+            self.particles1.pop(idx)
+            self.particles2.pop(idx)
+            self.rest_lengths.pop(idx)
         self.num_spring -= 1
 
-    def add_spring(self, particle1, particle2, is_pointer=False):
-        if is_pointer:
-            self.particles1.insert(0, particle1)
-            self.particles2.insert(0, particle2)
-            self.rest_lengths.insert(0, np.linalg.norm(particle1.x - particle2.x))
-        else:
-            self.particles1.append(particle1)
-            self.particles2.append(particle2)
-            self.rest_lengths.append(np.linalg.norm(particle1.x - particle2.x))
+    def add_spring(self, particle1, particle2):
+        self.particles1.append(particle1)
+        self.particles2.append(particle2)
+        self.rest_lengths.append(np.linalg.norm(particle1.x - particle2.x))
         self.num_spring += 1
 
     def init_spring(self, particles1, particles2, rest_lengths, num_spring):

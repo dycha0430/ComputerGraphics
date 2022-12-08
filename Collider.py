@@ -51,7 +51,7 @@ class PlaneCollider(Collider, metaclass=ABCMeta):
         return CollisionType.NOTHING
 
     def response_collision(self, velocity):
-        k_r = 0.6
+        k_r = 0.2
 
         v_n = np.inner(self.norm_vec, velocity) * self.norm_vec
         v_t = np.subtract(velocity, v_n)
@@ -63,7 +63,7 @@ class PlaneCollider(Collider, metaclass=ABCMeta):
         return counter_velocity
 
     def apply_friction_force(self, particle):
-        coefficient = 0.3
+        coefficient = 0.2
         v_t = particle.v
         len_v_t = Util.get_vector_length(v_t)
         if len_v_t == 0:

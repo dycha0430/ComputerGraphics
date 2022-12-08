@@ -1,5 +1,6 @@
 class Joint:
     def __init__(self):
+        self.name = ""
         self.offset = []
         self.children = []
         self.parent: Joint = None

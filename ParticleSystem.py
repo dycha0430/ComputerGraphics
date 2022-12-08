@@ -20,6 +20,9 @@ class ParticleSystem:
         self.move_mode = False
         self.pointer_particle = Particle()
 
+        self.motion_connected_mode = False
+        self.motion_connected_particle = Particle()
+
         self.colliders: List[Collider] = []
 
     def add_plane_collider(self, point, norm_vec):
@@ -28,14 +31,28 @@ class ParticleSystem:
     def set_pointer_particle(self, pointer):
         self.pointer_particle.x = pointer
 
+    def set_motion_connected_particle(self, particle):
+        self.motion_connected_particle.x = particle
+
     def change_move_mode(self, selected_particle=0):
-        self.move_mode = not self.move_mode
         if self.num == 0:
-            return
+            return False
+        self.move_mode = not self.move_mode
         if self.move_mode:
-            self.spring_force.add_spring(self.particles[selected_particle], self.pointer_particle, is_pointer=True)
+            self.spring_force.add_spring(self.particles[selected_particle], self.pointer_particle)
         else:
-            self.spring_force.remove_spring()
+            self.spring_force.remove_spring(self.pointer_particle)
+        return True
+
+    def change_motion_connected_mode(self, selected_particle=0):
+        if self.num == 0:
+            return False
+        self.motion_connected_mode = not self.motion_connected_mode
+        if self.motion_connected_mode:
+            self.spring_force.add_spring(self.particles[selected_particle], self.motion_connected_particle)
+        else:
+            self.spring_force.remove_spring(self.motion_connected_particle)
+        return True
 
     def change_integration_method(self, method):
         self.integration_method = method

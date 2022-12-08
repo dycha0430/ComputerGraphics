@@ -36,7 +36,6 @@ class Motion(metaclass=ABCMeta):
 
 class BvhMotion(Motion, metaclass=ABCMeta):
     def __init__(self, file_name):
-        #super(BvhMotion, self).__init__(file_name)
         self.channels = []
         Motion.__init__(self, file_name)
 
@@ -45,12 +44,6 @@ class BvhMotion(Motion, metaclass=ABCMeta):
         file_name = self.name.split('\\')[-1]
         extension = file_name.split('.')[-1]
         if extension != 'bvh':
-            '''
-            global win
-            self.name = ""
-            if win:
-                win.show_alert("Drag and drop only .bvh file")
-            '''
             return False
         f = open(self.name, 'r')
         lines = f.readlines()
@@ -62,6 +55,7 @@ class BvhMotion(Motion, metaclass=ABCMeta):
 
         cur_joint = Joint()
         num_frames = 0
+        joint_name = ""
         while True:
             if line_num == len(lines): break
             line = lines[line_num]
@@ -81,6 +75,7 @@ class BvhMotion(Motion, metaclass=ABCMeta):
                     self.postures.append(posture)
             elif words[0] == 'JOINT' or words[0] == 'ROOT':
                 self.joint_list.append(words[1])
+                joint_name = words[1]
             elif words[0] == '{':
                 new_joint = Joint()
                 cur_joint.add_child(new_joint)
@@ -90,21 +85,15 @@ class BvhMotion(Motion, metaclass=ABCMeta):
                 cur_joint = cur_joint.parent
             elif words[0] == 'End':
                 is_end_effector = True
+                joint_name = "End effector"
             elif words[0] == 'OFFSET':
                 cur_joint.set_offset(float(words[1]), float(words[2]), float(words[3]))
                 if is_end_effector:
                     cur_joint.isEndEffector = True
                     is_end_effector = False
-                    self.push_joint(cur_joint)
-                    continue
-                # If it is not end effector
-                line = lines[line_num]
-                line_num += 1
-                words = line.split()
-                if words[0] != 'CHANNELS':
-                    print("ERROR: OFFSET 다음에 무조건 CHANNELS 나오는 것으로 생각하고 구현하였는데 예외상황 발생")
-                    return
-
+                cur_joint.name = joint_name
+                self.push_joint(cur_joint)
+            elif words[0] == "CHANNELS":
                 num_channels = int(words[1])
                 channel = []
                 for i in range(0, num_channels):
@@ -112,8 +101,6 @@ class BvhMotion(Motion, metaclass=ABCMeta):
                     channel.append(chan_type)
 
                 self.channels.append(channel)
-
-                self.push_joint(cur_joint)
 
         self.print_info()
         return True

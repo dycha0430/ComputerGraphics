@@ -5,7 +5,7 @@ import numpy as np
 from ParticleSystem import ParticleSystem
 
 
-class ParticleRenderer(Renderer, metaclass=ABCMeta):
+class ParticleRenderer(Renderer):
     def __init__(self):
         # For Cube
         self.square_particle_system = ParticleSystem()
@@ -17,24 +17,43 @@ class ParticleRenderer(Renderer, metaclass=ABCMeta):
         # For particle system made by user input
         self.particle_system = ParticleSystem()
         self.rendering_particle_system = False
-        self.pointer = np.array([0, 0, 0])
         self.clicked_particle_idx = -1
         self.selected_particles_idx = []
         self.spring_indices1 = []
         self.spring_indices2 = []
         self.particle_system.add_plane_collider(np.array([0, 0, 0]), np.array([0, 1, 0]))
 
+        self.pointer = np.array([0, 0, 0])
         self.pointer_linked_particle_idx = 0
+
+        self.bvh_joint = np.array([0, 0, 0])
+        self.bvh_linked_particle_idx = 0
 
         self.init_mass_spring_model()
 
     def change_move_mode(self, select_particle=False):
+        ret = True
         if select_particle:
             self.pointer_linked_particle_idx = self.selected_particles_idx[0]
-            self.particle_system.change_move_mode(selected_particle=self.selected_particles_idx[0])
+            ret = self.particle_system.change_move_mode(selected_particle=self.selected_particles_idx[0])
         else:
             self.pointer_linked_particle_idx = 0
-            self.particle_system.change_move_mode()
+            ret = self.particle_system.change_move_mode()
+        return ret
+
+    def move_bvh_joint(self, position):
+        self.bvh_joint = position
+        self.particle_system.set_motion_connected_particle(self.bvh_joint)
+
+    def change_motion_connected_mode(self, select_particle=False):
+        ret = True
+        if select_particle:
+            self.bvh_linked_particle_idx = self.selected_particles_idx[0]
+            ret = self.particle_system.change_motion_connected_mode(selected_particle=self.selected_particles_idx[0])
+        else:
+            self.bvh_linked_particle_idx = 0
+            ret = self.particle_system.change_motion_connected_mode()
+        return ret
 
     def change_integration_method(self, method):
         self.particle_system.change_integration_method(method)
@@ -130,6 +149,13 @@ class ParticleRenderer(Renderer, metaclass=ABCMeta):
             glVertex3fv(np.array([pos[0], pos[1], pos[2]]))
             glEnd()
 
+        if self.particle_system.motion_connected_mode:
+            glBegin(GL_LINES)
+            glVertex3fv(self.bvh_joint)
+            pos = positions[self.bvh_linked_particle_idx]
+            glVertex3fv(np.array([pos[0], pos[1], pos[2]]))
+            glEnd()
+
         glColor3ub(255, 255, 255)
 
 
@@ -178,8 +204,8 @@ class ParticleRenderer(Renderer, metaclass=ABCMeta):
         for particle in particles:
             self.square_particle_system.add_particle(particle, 2)
 
-        self.square_spring_indices1 = np.array([0, 0, 1, 1, 2, 0, 1, 2, 3, 4, 4, 5, 5, 6, 1, 1, 3, 0, 4, 0, 0, 2, 3, 2])
-        self.square_spring_indices2 = np.array([1, 2, 2, 3, 3, 4, 5, 6, 7, 5, 6, 6, 7, 7, 4, 7, 6, 6, 7, 3, 5, 4, 5, 7])
+        self.square_spring_indices1 = np.array([0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 6])
+        self.square_spring_indices2 = np.array([1, 2, 3, 4, 5, 6, 7, 2, 3, 4, 5, 6, 7, 3, 4, 5, 6, 7, 4, 5, 6, 7, 5, 6, 7, 6, 7, 7])
 
         for i in range(len(self.square_spring_indices1)):
             self.square_particle_system.add_spring(self.square_spring_indices1[i], self.square_spring_indices2[i])

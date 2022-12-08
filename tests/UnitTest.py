@@ -18,7 +18,7 @@ def test_parsed_joint_num_is_correct():
 def test_get_root():
     motion = BvhMotion("unit_test.bvh")
     root = motion.get_root()
-    assert len(root.channels) == 6
+    assert len(root.channel_list) == 6
     assert root.offset == [0, 0, 0]
     assert root.isEndEffector == False
     assert len(root.children) == 3
