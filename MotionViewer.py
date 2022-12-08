@@ -222,6 +222,7 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         elif self.selected_particle_list.count() == 1:
             viewer.particle_renderer.change_motion_connected_mode(select_particle=True)
+            viewer.particle_renderer.clear_selected_particle_list()
             self.selected_particle_list.clear()
         else:
             viewer.particle_renderer.change_motion_connected_mode()
@@ -231,6 +232,7 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         elif self.selected_particle_list.count() == 1:
             viewer.particle_renderer.change_move_mode(select_particle=True)
+            viewer.particle_renderer.clear_selected_particle_list()
             self.selected_particle_list.clear()
         else:
             viewer.particle_renderer.change_move_mode()
@@ -239,8 +241,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.selected_particle_list.count() != 2:
             return
         viewer.particle_renderer.add_spring()
+        viewer.particle_renderer.clear_selected_particle_list()
         self.selected_particle_list.clear()
-        viewer.particle_renderer.clear_selected_particle()
 
     def joint_clicked(self):
         joint = self.joint_list.currentItem().text()

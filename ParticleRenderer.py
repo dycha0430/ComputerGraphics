@@ -65,9 +65,6 @@ class ParticleRenderer(Renderer):
     def set_spring_ks(self, ks):
         self.square_particle_system.set_spring_ks(ks)
 
-    def clear_selected_particle(self):
-        self.selected_particles_idx = []
-
     def render(self):
         self.render_pointer()
         self.render_particle_system()
@@ -82,6 +79,9 @@ class ParticleRenderer(Renderer):
 
     def remove_selected_particle(self, idx):
         self.selected_particles_idx.pop(idx)
+
+    def clear_selected_particle_list(self):
+        self.selected_particles_idx.clear()
 
     def contains_particle(self, idx):
         if idx in self.selected_particles_idx:

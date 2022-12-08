@@ -196,7 +196,7 @@ class ParticleSystem:
 
 
 class Particle:
-    def __init__(self, x=np.array([0, 0, 0]), m=1):
+    def __init__(self, x=np.array([0, 0, 0]), m=10):
         self.m: float = m
         self.initial_x = x
         self.x = x
