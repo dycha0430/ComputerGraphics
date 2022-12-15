@@ -11,43 +11,35 @@ class ParticleRenderer(Renderer):
         self.square_particle_system = ParticleSystem()
         self.rendering_square = False
         self.square_particle_system.add_plane_collider(np.array([0, 0, 0]), np.array([0, 1, 0]))
+        self.init_mass_spring_model()
 
         # For particle system made by user input
         self.particle_system = ParticleSystem()
         self.rendering_particle_system = False
-        self.clicked_particle_idx = -1
-        self.selected_particles_idx = []
         self.particle_system.add_plane_collider(np.array([0, 0, 0]), np.array([0, 1, 0]))
 
-        self.pointer = np.array([0, 0, 0])
+        self.clicked_particle_idx = -1
+        self.pointer_pos = np.array([0, 0, 0])
         self.pointer_linked_particle_idx = 0
 
-        self.bvh_joint = np.array([0, 0, 0])
+        self.bvh_linked_joint_pos = np.array([0, 0, 0])
         self.bvh_linked_particle_idx = 0
 
-        self.init_mass_spring_model()
+    def change_pointer_link_mode(self, selected_particle):
+        self.pointer_linked_particle_idx = selected_particle
+        self.particle_system.change_pointer_linked_mode(selected_particle = selected_particle)
 
-    def change_move_mode(self, select_particle=False):
-        ret = True
-        if select_particle:
-            self.pointer_linked_particle_idx = self.selected_particles_idx[0]
-            ret = self.particle_system.change_move_mode(selected_particle=self.selected_particles_idx[0])
-        else:
-            self.pointer_linked_particle_idx = 0
-            ret = self.particle_system.change_move_mode()
-        return ret
+    def change_motion_link_mode(self, selected_particle):
+        self.bvh_linked_particle_idx = selected_particle
+        self.particle_system.change_bvh_linked_mode(selected_particle)
 
-    def move_bvh_joint(self, position):
-        self.bvh_joint = position
-        self.particle_system.set_motion_connected_particle(self.bvh_joint)
+    def set_bvh_joint_pos(self, position):
+        self.bvh_linked_joint_pos = position
+        self.particle_system.set_bvh_linked_particle_pos(self.bvh_linked_joint_pos)
 
-    def change_motion_connected_mode(self, select_particle=False):
-        if select_particle:
-            self.bvh_linked_particle_idx = self.selected_particles_idx[0]
-            self.particle_system.change_motion_connected_mode(selected_particle=self.selected_particles_idx[0])
-        else:
-            self.bvh_linked_particle_idx = 0
-            self.particle_system.change_motion_connected_mode()
+    def move_pointer(self, offset):
+        self.pointer_pos = np.array([self.pointer_pos[0] + offset[0], self.pointer_pos[1] + offset[1], self.pointer_pos[2] + offset[2]])
+        self.particle_system.set_pointer_particle_pos(self.pointer_pos)
 
     def change_integration_method(self, method):
         self.particle_system.change_integration_method(method)
@@ -68,27 +60,13 @@ class ParticleRenderer(Renderer):
     def click_particle(self, idx):
         self.clicked_particle_idx = idx
 
-    def select_particle(self, idx):
-        self.selected_particles_idx.append(idx)
-
-    def remove_selected_particle(self, idx):
-        self.selected_particles_idx.pop(idx)
-
-    def clear_selected_particle_list(self):
-        self.selected_particles_idx.clear()
-
-    def contains_particle(self, idx):
-        if idx in self.selected_particles_idx:
-            return True
-        return False
-
     def simulate_particle(self, time_stamp):
         if self.rendering_square:
             self.square_particle_system.update_state(time_stamp)
         if self.rendering_particle_system:
             self.particle_system.update_state(time_stamp)
 
-    def set_render_particle_system(self):
+    def start_or_stop_particle_system(self):
         if not self.rendering_particle_system:
             self.particle_system.init_particles()
         self.rendering_particle_system = not self.rendering_particle_system
@@ -97,20 +75,14 @@ class ParticleRenderer(Renderer):
         glColor3ub(0, 255, 0)
         glPointSize(10)
         glBegin(GL_POINTS)
-        glVertex3fv(self.pointer)
+        glVertex3fv(self.pointer_pos)
         glEnd()
         glColor3ub(255, 255, 255)
 
-    def move_pointer(self, offset):
-        self.pointer = np.array([self.pointer[0] + offset[0], self.pointer[1] + offset[1], self.pointer[2] + offset[2]])
-        self.particle_system.set_pointer_particle(self.pointer)
-
     def add_particle(self):
-        self.particle_system.add_particle(self.pointer, 1)
+        self.particle_system.add_particle(self.pointer_pos, 1)
 
-    def add_spring(self):
-        idx1 = self.selected_particles_idx[0]
-        idx2 = self.selected_particles_idx[1]
+    def add_spring(self, idx1, idx2):
         self.particle_system.add_spring(idx1, idx2)
 
     def render_particle_system(self):
@@ -127,7 +99,7 @@ class ParticleRenderer(Renderer):
         glEnd()
 
         glBegin(GL_LINES)
-        for i in range(self.particle_system.spring_force.num_spring):
+        for i in range(self.particle_system.spring_force.get_spring_num()):
             pos1 = self.particle_system.spring_force.particles1[i].x
             pos2 = self.particle_system.spring_force.particles2[i].x
             glVertex3fv(np.array([pos1[0], pos1[1], pos1[2]]))
@@ -164,7 +136,7 @@ class ParticleRenderer(Renderer):
         glEnd()
 
         glBegin(GL_LINES)
-        for i in range(self.square_particle_system.spring_force.num_spring):
+        for i in range(self.square_particle_system.spring_force.get_spring_num()):
             pos1 = self.square_particle_system.spring_force.particles1[i].x
             pos2 = self.square_particle_system.spring_force.particles2[i].x
             glVertex3fv(np.array([pos1[0], pos1[1], pos1[2]]))

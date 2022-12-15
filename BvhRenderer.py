@@ -4,7 +4,6 @@ from LimbIK import LimbIK, Step
 import Util
 from OpenGL.GL import *
 import numpy as np
-from abc import *
 
 
 class BvhRenderer(Renderer):
@@ -108,7 +107,7 @@ class BvhRenderer(Renderer):
                 transformation_matrix = Util.get_current_transformation_matrix()
                 global_position = transformation_matrix.T @ np.array([0, 0, 0, 1]).T
                 global_position = global_position[:-1]
-                self.connected_particle_renderer.move_bvh_joint(global_position)
+                self.connected_particle_renderer.set_bvh_joint_pos(global_position)
 
         if joint.isEndEffector:
             glPopMatrix()
@@ -174,7 +173,7 @@ class BvhRenderer(Renderer):
 
         self.draw_frame_recursively(root, False)
 
-        if self.connected_particle_renderer.change_motion_connected_mode:
+        if self.connected_particle_renderer.change_motion_link_mode:
             glPushMatrix()
             glLoadIdentity()
             self.reset_indexes()

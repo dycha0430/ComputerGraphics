@@ -17,9 +17,6 @@ class GravityForce(Force, metaclass=ABCMeta):
         self.affected_particles = []
         self.G = np.array([0, -9.8, 0])
 
-    def init_particles(self, particles):
-        self.affected_particles = particles
-
     def add_particle(self, particle):
         self.affected_particles.append(particle)
 
@@ -34,9 +31,11 @@ class SpringForce(Force, metaclass=ABCMeta):
         self.particles1 = []
         self.particles2 = []
         self.rest_lengths = []
-        self.num_spring = 0
         self.kd = 50
         self.ks = 10
+
+    def get_spring_num(self):
+        return len(self.particles1)
 
     def remove_spring(self, particle):
         if particle in self.particles1:
@@ -49,19 +48,11 @@ class SpringForce(Force, metaclass=ABCMeta):
             self.particles1.pop(idx)
             self.particles2.pop(idx)
             self.rest_lengths.pop(idx)
-        self.num_spring -= 1
 
     def add_spring(self, particle1, particle2):
         self.particles1.append(particle1)
         self.particles2.append(particle2)
         self.rest_lengths.append(np.linalg.norm(particle1.x - particle2.x))
-        self.num_spring += 1
-
-    def init_spring(self, particles1, particles2, rest_lengths, num_spring):
-        self.particles1 = particles1
-        self.particles2 = particles2
-        self.rest_lengths = rest_lengths
-        self.num_spring = num_spring
 
     def set_kd(self, kd):
         self.kd = kd
@@ -70,7 +61,7 @@ class SpringForce(Force, metaclass=ABCMeta):
         self.ks = ks
 
     def apply_force(self, delta_t):
-        for i in range(self.num_spring):
+        for i in range(self.get_spring_num()):
             p1 = self.particles1[i]
             p2 = self.particles2[i]
             delta_x = p1.x - p2.x

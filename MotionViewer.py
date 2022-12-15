@@ -91,11 +91,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.particle_list_title.setReadOnly(True)
         self.particle_list_title.setStyleSheet("* { background-color: rgba(0, 0, 0, 0); border: none;}")
         self.particle_list = QtWidgets.QListWidget()
+
+        self.selected_particles_idx = []
         self.selected_particle_list_title = QtWidgets.QLineEdit()
         self.selected_particle_list_title.setText("Selected Particles")
         self.selected_particle_list_title.setReadOnly(True)
         self.selected_particle_list_title.setStyleSheet("* { background-color: rgba(0, 0, 0, 0); border: none;}")
         self.selected_particle_list = QtWidgets.QListWidget()
+
         self.add_spring_btn = QtWidgets.QPushButton("Add Spring", self)
         self.move_mode_check_box = QtWidgets.QCheckBox("Move particle mode")
         self.motion_connect_mode_check_box = QtWidgets.QCheckBox("Connect Bvh with particle system", self)
@@ -218,30 +221,30 @@ class MainWindow(QtWidgets.QMainWindow):
         central_widget.setLayout(whole_layout)
 
     def connect_bvh_particle(self):
+        selected_particle = 0
         if self.selected_particle_list.count() > 1:
             return
         elif self.selected_particle_list.count() == 1:
-            viewer.particle_renderer.change_motion_connected_mode(select_particle=True)
-            viewer.particle_renderer.clear_selected_particle_list()
+            selected_particle = self.selected_particles_idx[0]
+            self.selected_particles_idx.clear()
             self.selected_particle_list.clear()
-        else:
-            viewer.particle_renderer.change_motion_connected_mode()
+        viewer.particle_renderer.change_motion_link_mode(selected_particle)
 
     def change_move_mode(self):
+        selected_particle = 0
         if self.selected_particle_list.count() > 1:
             return
         elif self.selected_particle_list.count() == 1:
-            viewer.particle_renderer.change_move_mode(select_particle=True)
-            viewer.particle_renderer.clear_selected_particle_list()
+            selected_particle = self.selected_particles_idx[0]
+            self.selected_particles_idx.clear()
             self.selected_particle_list.clear()
-        else:
-            viewer.particle_renderer.change_move_mode()
+        viewer.particle_renderer.change_pointer_link_mode(selected_particle)
 
     def add_spring(self):
         if self.selected_particle_list.count() != 2:
             return
-        viewer.particle_renderer.add_spring()
-        viewer.particle_renderer.clear_selected_particle_list()
+        viewer.particle_renderer.add_spring(self.selected_particles_idx[0], self.selected_particles_idx[1])
+        self.selected_particles_idx.clear()
         self.selected_particle_list.clear()
 
     def joint_clicked(self):
@@ -250,7 +253,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def selected_particle_double_clicked(self):
         index = self.selected_particle_list.currentRow()
-        viewer.particle_renderer.remove_selected_particle(index)
+        self.selected_particles_idx.pop(index)
         self.selected_particle_list.takeItem(index)
 
     def particle_clicked(self):
@@ -261,13 +264,13 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.selected_particle_list.count() >= 2:
             return
         index = self.particle_list.currentRow()
-        if viewer.particle_renderer.contains_particle(index):
+        if index in self.selected_particles_idx:
             return
-        viewer.particle_renderer.select_particle(index)
+        self.selected_particles_idx.append(index)
         self.selected_particle_list.addItem("Particle " + str(index))
 
     def rendering_particle_system_btn_clicked(self):
-        viewer.particle_renderer.set_render_particle_system()
+        viewer.particle_renderer.start_or_stop_particle_system()
         if viewer.particle_renderer.rendering_particle_system:
             self.set_rendering_particle_system_btn_icon(True)
         else:

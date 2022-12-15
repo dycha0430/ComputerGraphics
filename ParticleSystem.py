@@ -7,8 +7,6 @@ from typing import List
 
 class ParticleSystem:
     def __init__(self):
-        self.num = 0
-        self.time: float = 0
         self.particles = []
         self.forces = []
         self.spring_force = SpringForce()
@@ -17,41 +15,41 @@ class ParticleSystem:
         self.forces.append(self.gravity_force)
         self.integration_method = 0
 
-        self.move_mode = False
+        self.pointer_linked_mode = False
         self.pointer_particle = Particle()
 
-        self.motion_connected_mode = False
-        self.motion_connected_particle = Particle()
+        self.bvh_linked_mode = False
+        self.bvh_linked_particle = Particle()
 
         self.colliders: List[Collider] = []
 
     def add_plane_collider(self, point, norm_vec):
         self.colliders.append(PlaneCollider(point, norm_vec))
 
-    def set_pointer_particle(self, pointer):
-        self.pointer_particle.x = pointer
+    def set_pointer_particle_pos(self, pos):
+        self.pointer_particle.x = pos
 
-    def set_motion_connected_particle(self, particle):
-        self.motion_connected_particle.x = particle
+    def set_bvh_linked_particle_pos(self, pos):
+        self.bvh_linked_particle.x = pos
 
-    def change_move_mode(self, selected_particle=0):
-        if self.num == 0:
+    def change_pointer_linked_mode(self, selected_particle):
+        if len(self.particles) == 0:
             return False
-        self.move_mode = not self.move_mode
-        if self.move_mode:
+        self.pointer_linked_mode = not self.pointer_linked_mode
+        if self.pointer_linked_mode:
             self.spring_force.add_spring(self.particles[selected_particle], self.pointer_particle)
         else:
             self.spring_force.remove_spring(self.pointer_particle)
         return True
 
-    def change_motion_connected_mode(self, selected_particle=0):
-        if self.num == 0:
+    def change_bvh_linked_mode(self, selected_particle=0):
+        if len(self.particles) == 0:
             return False
-        self.motion_connected_mode = not self.motion_connected_mode
-        if self.motion_connected_mode:
-            self.spring_force.add_spring(self.particles[selected_particle], self.motion_connected_particle)
+        self.bvh_linked_mode = not self.bvh_linked_mode
+        if self.bvh_linked_mode:
+            self.spring_force.add_spring(self.particles[selected_particle], self.bvh_linked_particle)
         else:
-            self.spring_force.remove_spring(self.motion_connected_particle)
+            self.spring_force.remove_spring(self.bvh_linked_particle)
         return True
 
     def change_integration_method(self, method):
@@ -63,28 +61,19 @@ class ParticleSystem:
     def set_spring_ks(self, ks):
         self.spring_force.set_ks(ks)
 
-    def add_particle_with_no_gravity(self, particle, weight):
-        self.num += 1
-        new_particle = Particle(particle, weight)
-        self.particles.append(new_particle)
-
     def init_particles(self):
         for particle in self.particles:
             particle.x = particle.initial_x
             particle.v = np.array([0, 0, 0])
             particle.f = np.array([0, 0, 0])
 
-    def add_particle(self, particle, weight):
-        self.num += 1
-        new_particle = Particle(np.array(particle), weight)
+    def add_particle(self, pos, weight):
+        new_particle = Particle(np.array(pos), weight)
         self.particles.append(new_particle)
         self.gravity_force.add_particle(new_particle)
 
     def add_spring(self, index1, index2):
         self.spring_force.add_spring(self.particles[index1], self.particles[index2])
-
-    def get_dims(self):
-        return 6 * self.num
 
     def get_positions(self):
         dst = []
@@ -106,7 +95,7 @@ class ParticleSystem:
         return dst
 
     def set_state(self, src):
-        for i in range(self.num):
+        for i in range(len(self.particles)):
             self.particles[i].x = np.array([src[i * 6], src[i * 6 + 1], src[i * 6 + 2]])
             self.particles[i].v = np.array([src[i * 6 + 3], src[i * 6 + 4], src[i * 6 + 5]])
 
@@ -139,7 +128,6 @@ class ParticleSystem:
         tmp2 = self.get_state()
         tmp2 = Util.add_vectors(tmp1, tmp2)
         self.set_state(tmp2)
-        self.time += delta_t
 
     def semi_implicit_euler_step(self, delta_t: float):
         tmp1 = self.calculate_derivative(delta_t)
