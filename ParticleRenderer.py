@@ -7,10 +7,8 @@ from ParticleSystem import ParticleSystem
 
 class ParticleRenderer(Renderer):
     def __init__(self):
-        # For Cube
+        # For Cube Test
         self.square_particle_system = ParticleSystem()
-        self.square_spring_indices1 = None
-        self.square_spring_indices2 = None
         self.rendering_square = False
         self.square_particle_system.add_plane_collider(np.array([0, 0, 0]), np.array([0, 1, 0]))
 
@@ -19,8 +17,6 @@ class ParticleRenderer(Renderer):
         self.rendering_particle_system = False
         self.clicked_particle_idx = -1
         self.selected_particles_idx = []
-        self.spring_indices1 = []
-        self.spring_indices2 = []
         self.particle_system.add_plane_collider(np.array([0, 0, 0]), np.array([0, 1, 0]))
 
         self.pointer = np.array([0, 0, 0])
@@ -46,14 +42,12 @@ class ParticleRenderer(Renderer):
         self.particle_system.set_motion_connected_particle(self.bvh_joint)
 
     def change_motion_connected_mode(self, select_particle=False):
-        ret = True
         if select_particle:
             self.bvh_linked_particle_idx = self.selected_particles_idx[0]
-            ret = self.particle_system.change_motion_connected_mode(selected_particle=self.selected_particles_idx[0])
+            self.particle_system.change_motion_connected_mode(selected_particle=self.selected_particles_idx[0])
         else:
             self.bvh_linked_particle_idx = 0
-            ret = self.particle_system.change_motion_connected_mode()
-        return ret
+            self.particle_system.change_motion_connected_mode()
 
     def change_integration_method(self, method):
         self.particle_system.change_integration_method(method)
@@ -117,8 +111,6 @@ class ParticleRenderer(Renderer):
     def add_spring(self):
         idx1 = self.selected_particles_idx[0]
         idx2 = self.selected_particles_idx[1]
-        self.spring_indices1.append(idx1)
-        self.spring_indices2.append(idx2)
         self.particle_system.add_spring(idx1, idx2)
 
     def render_particle_system(self):
@@ -135,26 +127,12 @@ class ParticleRenderer(Renderer):
         glEnd()
 
         glBegin(GL_LINES)
-        for i in range(len(self.spring_indices1)):
-            pos1 = positions[self.spring_indices1[i]]
-            pos2 = positions[self.spring_indices2[i]]
+        for i in range(self.particle_system.spring_force.num_spring):
+            pos1 = self.particle_system.spring_force.particles1[i].x
+            pos2 = self.particle_system.spring_force.particles2[i].x
             glVertex3fv(np.array([pos1[0], pos1[1], pos1[2]]))
             glVertex3fv(np.array([pos2[0], pos2[1], pos2[2]]))
         glEnd()
-
-        if self.particle_system.move_mode:
-            glBegin(GL_LINES)
-            glVertex3fv(self.pointer)
-            pos = positions[self.pointer_linked_particle_idx]
-            glVertex3fv(np.array([pos[0], pos[1], pos[2]]))
-            glEnd()
-
-        if self.particle_system.motion_connected_mode:
-            glBegin(GL_LINES)
-            glVertex3fv(self.bvh_joint)
-            pos = positions[self.bvh_linked_particle_idx]
-            glVertex3fv(np.array([pos[0], pos[1], pos[2]]))
-            glEnd()
 
         glColor3ub(255, 255, 255)
 
@@ -186,12 +164,11 @@ class ParticleRenderer(Renderer):
         glEnd()
 
         glBegin(GL_LINES)
-        for i in range(len(self.square_spring_indices1)):
-            pos1 = positions[self.square_spring_indices1[i]]
-            pos2 = positions[self.square_spring_indices2[i]]
+        for i in range(self.square_particle_system.spring_force.num_spring):
+            pos1 = self.square_particle_system.spring_force.particles1[i].x
+            pos2 = self.square_particle_system.spring_force.particles2[i].x
             glVertex3fv(np.array([pos1[0], pos1[1], pos1[2]]))
             glVertex3fv(np.array([pos2[0], pos2[1], pos2[2]]))
-
         glEnd()
 
         glColor3ub(255, 255, 255)
@@ -204,8 +181,8 @@ class ParticleRenderer(Renderer):
         for particle in particles:
             self.square_particle_system.add_particle(particle, 2)
 
-        self.square_spring_indices1 = np.array([0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 6])
-        self.square_spring_indices2 = np.array([1, 2, 3, 4, 5, 6, 7, 2, 3, 4, 5, 6, 7, 3, 4, 5, 6, 7, 4, 5, 6, 7, 5, 6, 7, 6, 7, 7])
+        square_spring_indices1 = np.array([0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 6])
+        square_spring_indices2 = np.array([1, 2, 3, 4, 5, 6, 7, 2, 3, 4, 5, 6, 7, 3, 4, 5, 6, 7, 4, 5, 6, 7, 5, 6, 7, 6, 7, 7])
 
-        for i in range(len(self.square_spring_indices1)):
-            self.square_particle_system.add_spring(self.square_spring_indices1[i], self.square_spring_indices2[i])
+        for i in range(len(square_spring_indices1)):
+            self.square_particle_system.add_spring(square_spring_indices1[i], square_spring_indices2[i])
