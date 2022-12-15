@@ -2,6 +2,7 @@ import ParticleSystem
 import pytest
 import Util
 import numpy as np
+from Collider import *
 
 
 def test_add_two_vectors():
@@ -24,27 +25,46 @@ def test_scale_vector():
     assert(ret[2] == 4)
 
 
-def test_detect_collision():
+@pytest.fixture
+def collider():
+    collider = PlaneCollider(np.array([0, 0, 0]), np.array([0, 1, 0]))
+    return collider
+
+
+def test_detect_collision(collider):
     # In collision space and moving inside
-    pos = np.array([1, 0.009, 3])
+    pos = np.array([1, 0.00001, 3])
     velocity = np.array([1, -1, 1])
-    ret = Util.detect_collision(pos, velocity)
-    assert(ret == True)
+    ret = collider.detect_collision(pos, velocity)
+    assert(ret == CollisionType.COLLIDE)
+
+    pos = np.array([1, 0.00001, 3])
+    velocity = np.array([1, -0.00001, 1])
+    ret = collider.detect_collision(pos, velocity)
+    assert (ret == CollisionType.CONTACT)
 
     # Outside collision space and moving inside
-    pos = np.array([0, 0.011, 10])
+    pos = np.array([0, 0.01, 10])
     velocity = np.array([1, -1, 1])
-    ret = Util.detect_collision(pos, velocity)
-    assert (ret == False)
+    ret = collider.detect_collision(pos, velocity)
+    assert (ret == CollisionType.NOTHING)
 
     # Inside collision space and moving outside
-    pos = np.array([1, 0.009, 3])
+    pos = np.array([1, 0.00001, 3])
     velocity = np.array([1, 0.5, 1])
-    ret = Util.detect_collision(pos, velocity)
-    assert (ret == False)
+    ret = collider.detect_collision(pos, velocity)
+    assert (ret == CollisionType.NOTHING)
 
     # Outside collision space and moving outside
-    pos = np.array([-10, 0.011, 3])
+    pos = np.array([-10, 0.01, 3])
     velocity = np.array([1, 0.1, 1])
-    ret = Util.detect_collision(pos, velocity)
-    assert (ret == False)
+    ret = collider.detect_collision(pos, velocity)
+    assert (ret == CollisionType.NOTHING)
+
+
+def test_response_collision(collider):
+    velocity = np.array([-3, -1, 3])
+    counter_velocity = collider.response_collision(velocity)
+    assert (counter_velocity[0] == -3)
+    assert (counter_velocity[1] == 0.2) # assume that k_r is 0.2
+    assert (counter_velocity[2] == 3)
