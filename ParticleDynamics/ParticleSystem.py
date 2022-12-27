@@ -1,7 +1,7 @@
 import numpy as np
 import Util
-from Force import GravityForce, SpringForce
-from Collider import Collider, PlaneCollider, CollisionType
+from ParticleDynamics.Force import GravityForce, SpringForce
+from ParticleDynamics.Collider import Collider, PlaneCollider, CollisionType
 from typing import List
 
 

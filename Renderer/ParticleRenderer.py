@@ -1,8 +1,8 @@
-from Renderer import Renderer
+from Renderer.Renderer import Renderer
 from OpenGL.GL import *
 from abc import *
 import numpy as np
-from ParticleSystem import ParticleSystem
+from ParticleDynamics.ParticleSystem import ParticleSystem
 
 
 class ParticleRenderer(Renderer):

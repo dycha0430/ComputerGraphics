@@ -1,6 +1,6 @@
-from Posture import Posture
-from Joint import Joint
-from Skeleton import Skeleton
+from Motion.Posture import Posture
+from Motion.Joint import Joint
+from Motion.Skeleton import Skeleton
 from abc import *
 
 

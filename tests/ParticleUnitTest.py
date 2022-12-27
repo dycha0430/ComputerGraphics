@@ -1,8 +1,8 @@
-import ParticleSystem
+import ParticleDynamics.ParticleSystem as ParticleSystem
 import pytest
 import Util
 import numpy as np
-from Collider import *
+from ParticleDynamics.Collider import *
 
 
 def test_add_two_vectors():

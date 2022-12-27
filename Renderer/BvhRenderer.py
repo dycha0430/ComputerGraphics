@@ -1,6 +1,6 @@
-from Renderer import Renderer
-from ParticleRenderer import ParticleRenderer
-from LimbIK import LimbIK, Step
+from Renderer.Renderer import Renderer
+from Renderer.ParticleRenderer import ParticleRenderer
+from LimbIK.LimbIK import LimbIK, Step
 import Util
 from OpenGL.GL import *
 import numpy as np

@@ -1,7 +1,7 @@
 from MotionViewer import *
 import pytest
 import Util as util
-from LimbIK import LimbIK
+from LimbIK.LimbIK import LimbIK
 import numpy as np
 
 ###########################################################

@@ -1,10 +1,9 @@
-import sys
-import StyleSheet
-from Renderer import BackgroundRenderer
-from BvhRenderer import BvhRenderer
-from ParticleRenderer import ParticleRenderer
+import styles.StyleSheet as StyleSheet
+from Renderer.Renderer import BackgroundRenderer
+from Renderer.BvhRenderer import BvhRenderer
+from Renderer.ParticleRenderer import ParticleRenderer
 from CameraController import CameraController
-from Motion import *
+from Motion.Motion import *
 
 # For PyQt5
 from PyQt5 import QtCore, QtOpenGL, QtWidgets
@@ -12,10 +11,6 @@ from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QIcon, QPixmap, QIntValidator
 
 ###########################################################
-# Global renderer
-viewer = None
-win = None
-
 class Viewer:
     def __init__(self, bvh_motion):
         self.renderers = []
@@ -37,21 +32,20 @@ class Viewer:
 ##################################################################
             
 class GLWidget(QtOpenGL.QGLWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, viewer=None):
         self.parent = parent
+        self.viewer = viewer
         QtOpenGL.QGLWidget.__init__(self, parent)
 
     def paintGL(self):
-        global viewer
-        viewer.render()
+        self.viewer.render()
 
     def resizeGL(self, width, height):
-        global viewer
-        viewer.camera_controller.set_viewport_size(width, height)
+        self.viewer.camera_controller.set_viewport_size(width, height)
     
 class MainWindow(QtWidgets.QMainWindow):
 
-    def __init__(self):
+    def __init__(self, viewer):
         QtWidgets.QMainWindow.__init__(self) # call the init for the parent class
 
         self.resize(1260, 900)
@@ -59,7 +53,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setMouseTracking(True)
         self.setAcceptDrops(True)
 
-        self.glWidget = GLWidget(self)
+        self.viewer = viewer
+
+        self.glWidget = GLWidget(self, viewer)
         self.time_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.time_input = QtWidgets.QLineEdit()
         self.play_btn = QtWidgets.QPushButton("", self)
@@ -123,8 +119,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.button_right_pressed = False
 
     def simulate_particle(self):
-        global viewer
-        viewer.particle_renderer.simulate_particle(self.simulation_time_stamp)
+        self.viewer.particle_renderer.simulate_particle(self.simulation_time_stamp)
 
     def initGUI(self):
         central_widget = QtWidgets.QWidget()
@@ -228,7 +223,7 @@ class MainWindow(QtWidgets.QMainWindow):
             selected_particle = self.selected_particles_idx[0]
             self.selected_particles_idx.clear()
             self.selected_particle_list.clear()
-        viewer.particle_renderer.change_motion_link_mode(selected_particle)
+        self.viewer.particle_renderer.change_motion_link_mode(selected_particle)
 
     def change_move_mode(self):
         selected_particle = 0
@@ -238,18 +233,18 @@ class MainWindow(QtWidgets.QMainWindow):
             selected_particle = self.selected_particles_idx[0]
             self.selected_particles_idx.clear()
             self.selected_particle_list.clear()
-        viewer.particle_renderer.change_pointer_link_mode(selected_particle)
+        self.viewer.particle_renderer.change_pointer_link_mode(selected_particle)
 
     def add_spring(self):
         if self.selected_particle_list.count() != 2:
             return
-        viewer.particle_renderer.add_spring(self.selected_particles_idx[0], self.selected_particles_idx[1])
+        self.viewer.particle_renderer.add_spring(self.selected_particles_idx[0], self.selected_particles_idx[1])
         self.selected_particles_idx.clear()
         self.selected_particle_list.clear()
 
     def joint_clicked(self):
         joint = self.joint_list.currentItem().text()
-        viewer.bvh_renderer.selected_joint_name = joint
+        self.viewer.bvh_renderer.selected_joint_name = joint
 
     def selected_particle_double_clicked(self):
         index = self.selected_particle_list.currentRow()
@@ -258,20 +253,21 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def particle_clicked(self):
         index = self.particle_list.currentRow()
-        viewer.particle_renderer.click_particle(index)
+        self.viewer.particle_renderer.click_particle(index)
 
     def particle_double_clicked(self):
         if self.selected_particle_list.count() >= 2:
             return
         index = self.particle_list.currentRow()
+
         if index in self.selected_particles_idx:
             return
         self.selected_particles_idx.append(index)
         self.selected_particle_list.addItem("Particle " + str(index))
 
     def rendering_particle_system_btn_clicked(self):
-        viewer.particle_renderer.start_or_stop_particle_system()
-        if viewer.particle_renderer.rendering_particle_system:
+        self.viewer.particle_renderer.start_or_stop_particle_system()
+        if self.viewer.particle_renderer.rendering_particle_system:
             self.set_rendering_particle_system_btn_icon(True)
         else:
             self.set_rendering_particle_system_btn_icon(False)
@@ -284,10 +280,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def change_integration_method(self):
         index = self.integration_method_combo_box.currentIndex()
-        viewer.particle_renderer.change_integration_method(index)
+        self.viewer.particle_renderer.change_integration_method(index)
 
     def rendering_square_btn_clicked(self):
-        viewer.particle_renderer.set_rendering_square()
+        self.viewer.particle_renderer.set_rendering_square()
         if self.rendering_square_btn.isChecked():
             self.rendering_square_btn.setCheckable(False)
             self.set_rendering_btn_icon(True)
@@ -302,46 +298,46 @@ class MainWindow(QtWidgets.QMainWindow):
             self.rendering_square_btn.setText("Start square particle simulation")
     def set_kd(self):
         kd = int(self.kd_input.text())
-        viewer.particle_renderer.set_spring_kd(kd)
+        self.viewer.particle_renderer.set_spring_kd(kd)
 
     def set_ks(self):
         ks = int(self.ks_input.text())
-        viewer.particle_renderer.set_spring_ks(ks)
+        self.viewer.particle_renderer.set_spring_ks(ks)
 
     def set_key_frame(self):
         if not self.key_frame_check_box.isChecked():
             self.key_frame_input.clear()
             return
         key_frame = int(self.key_frame_input.text())
-        viewer.bvh_renderer.set_key_frame(key_frame)
+        self.viewer.bvh_renderer.set_key_frame(key_frame)
 
     def enable_key_frame(self, state):
         if state == QtCore.Qt.Checked:
-            viewer.bvh_renderer.set_key_frame(0)
+            self.viewer.bvh_renderer.set_key_frame(0)
         else:
             self.key_frame_input.clear()
-            viewer.bvh_renderer.set_key_frame(-1)
+            self.viewer.bvh_renderer.set_key_frame(-1)
 
     def set_warping(self):
         if not self.warping_check_box.isChecked():
             self.warping_input.clear()
             return
         interval = int(self.warping_input.text())
-        viewer.bvh_renderer.set_enable_warping(interval)
+        self.viewer.bvh_renderer.set_enable_warping(interval)
 
     def enable_warping(self, state):
         if state == QtCore.Qt.Checked:
-            viewer.bvh_renderer.set_enable_warping(0)
+            self.viewer.bvh_renderer.set_enable_warping(0)
         else:
             self.warping_input.clear()
-            viewer.bvh_renderer.set_enable_warping(-1)
+            self.viewer.bvh_renderer.set_enable_warping(-1)
 
     def set_play_btn_icon(self, is_play):
         pixmap = None
         if is_play:
-            pixmap = QPixmap('./play_btn.jpg')
+            pixmap = QPixmap('./styles/play_btn.jpg')
         else:
-            pixmap = QPixmap('./pause_btn.png')
+            pixmap = QPixmap('./styles/pause_btn.png')
         icon = QIcon()
         icon.addPixmap(pixmap)
         self.play_btn.setIcon(icon)
@@ -351,35 +347,30 @@ class MainWindow(QtWidgets.QMainWindow):
         QtWidgets.QMessageBox.question(self, 'Error', message, QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.NoButton)
 
     def set_frame_by_input(self):
-        global viewer
         val = self.time_input.text()
         val = int(val)
 
         if val < 0:
             self.show_alert("Enter positive number")
             return
-        elif val >= viewer.bvh_renderer.get_frame_num():
+        elif val >= self.viewer.bvh_renderer.get_frame_num():
             self.show_alert("Frame number cannot exceed bvh file's frame number")
             return
         self.set_frame(val)
         
     def play_btn_clicked(self):
-        global viewer
-        viewer.bvh_renderer.start_or_stop_animation()
+        self.viewer.bvh_renderer.start_or_stop_animation()
 
         self.set_play_btn_icon(True)
 
-        if viewer.bvh_renderer.animating_mode:
+        if self.viewer.bvh_renderer.animating_mode:
             self.set_play_btn_icon(False)
         
     def set_frame(self, frame):
-        global viewer
-        viewer.bvh_renderer.cur_frame = frame
+        self.viewer.bvh_renderer.cur_frame = frame
         self.time_input.setText(str(frame))
 
     def keyPressEvent(self, event):
-        global viewer
-
         ik_factor = 0.01
         pointer_factor = 0.03
 
@@ -387,68 +378,64 @@ class MainWindow(QtWidgets.QMainWindow):
         if isinstance(focused_widget, QtWidgets.QLineEdit) or isinstance(focused_widget, QtWidgets.QCheckBox):
             focused_widget.clearFocus()
         if event.key() == QtCore.Qt.Key_Space:
-            viewer.bvh_renderer.start_or_stop_animation()
+            self.viewer.bvh_renderer.start_or_stop_animation()
         elif event.key() == QtCore.Qt.Key_V:
-            viewer.camera_controller.flip_projection()
+            self.viewer.camera_controller.flip_projection()
         elif event.key() == QtCore.Qt.Key_W: # Up
-            viewer.bvh_renderer.move_end_effector([0, ik_factor, 0])
+            self.viewer.bvh_renderer.move_end_effector([0, ik_factor, 0])
         elif event.key() == QtCore.Qt.Key_S: # Down
-            viewer.bvh_renderer.move_end_effector([0, -ik_factor, 0])
+            self.viewer.bvh_renderer.move_end_effector([0, -ik_factor, 0])
         elif event.key() == QtCore.Qt.Key_A: # Left
-            viewer.bvh_renderer.move_end_effector([-ik_factor, 0, 0])
+            self.viewer.bvh_renderer.move_end_effector([-ik_factor, 0, 0])
         elif event.key() == QtCore.Qt.Key_D: # Right
-            viewer.bvh_renderer.move_end_effector([ik_factor, 0, 0])
+            self.viewer.bvh_renderer.move_end_effector([ik_factor, 0, 0])
         elif event.key() == QtCore.Qt.Key_Q: # Back
-            viewer.bvh_renderer.move_end_effector([0, 0, -ik_factor])
+            self.viewer.bvh_renderer.move_end_effector([0, 0, -ik_factor])
         elif event.key() == QtCore.Qt.Key_E: # Front
-            viewer.bvh_renderer.move_end_effector([0, 0, ik_factor])
+            self.viewer.bvh_renderer.move_end_effector([0, 0, ik_factor])
         elif event.key() == QtCore.Qt.Key_I:
-            viewer.particle_renderer.move_pointer([0, pointer_factor, 0])
+            self.viewer.particle_renderer.move_pointer([0, pointer_factor, 0])
         elif event.key() == QtCore.Qt.Key_K:  # Down
-            viewer.particle_renderer.move_pointer([0, -pointer_factor, 0])
+            self.viewer.particle_renderer.move_pointer([0, -pointer_factor, 0])
         elif event.key() == QtCore.Qt.Key_J:  # Left
-            viewer.particle_renderer.move_pointer([-pointer_factor, 0, 0])
+            self.viewer.particle_renderer.move_pointer([-pointer_factor, 0, 0])
         elif event.key() == QtCore.Qt.Key_L:  # Right
-            viewer.particle_renderer.move_pointer([pointer_factor, 0, 0])
+            self.viewer.particle_renderer.move_pointer([pointer_factor, 0, 0])
         elif event.key() == QtCore.Qt.Key_U:  # Back
-            viewer.particle_renderer.move_pointer([0, 0, -pointer_factor])
+            self.viewer.particle_renderer.move_pointer([0, 0, -pointer_factor])
         elif event.key() == QtCore.Qt.Key_O:  # Front
-            viewer.particle_renderer.move_pointer([0, 0, pointer_factor])
+            self.viewer.particle_renderer.move_pointer([0, 0, pointer_factor])
         elif event.key() == QtCore.Qt.Key_Shift:
-            viewer.particle_renderer.add_particle()
+            self.viewer.particle_renderer.add_particle()
             self.particle_list.addItem("Particle " + str(self.particle_list.count()))
 
     def wheelEvent(self, event):
         y_offset = 0.005 * event.angleDelta().y()
-        global viewer
-        viewer.camera_controller.zoom(y_offset)
+        self.viewer.camera_controller.zoom(y_offset)
         
-
     def mousePressEvent(self, event):
-        global viewer
         xpos = event.x()
         ypos = event.y()
         if event.buttons() & QtCore.Qt.RightButton:
             self.button_right_pressed = True
-            viewer.camera_controller.set_cur_pos(xpos, ypos)
+            self.viewer.camera_controller.set_cur_pos(xpos, ypos)
         elif event.buttons() & QtCore.Qt.LeftButton:
             self.button_left_pressed = True
-            viewer.camera_controller.set_cur_pos(xpos, ypos)
+            self.viewer.camera_controller.set_cur_pos(xpos, ypos)
 
     def mouseReleaseEvent(self, event):
         self.button_right_pressed = False
         self.button_left_pressed = False
     
     def mouseMoveEvent(self, event):
-        global viewer
         xpos = event.x()
         ypos = event.y()
         if self.button_left_pressed:
-            viewer.camera_controller.change_orbit(xpos, ypos)
-            viewer.camera_controller.set_cur_pos(xpos, ypos)
+            self.viewer.camera_controller.change_orbit(xpos, ypos)
+            self.viewer.camera_controller.set_cur_pos(xpos, ypos)
         elif self.button_right_pressed:
-            viewer.camera_controller.change_panning(xpos, ypos)
-            viewer.camera_controller.set_cur_pos(xpos, ypos)
+            self.viewer.camera_controller.change_panning(xpos, ypos)
+            self.viewer.camera_controller.set_cur_pos(xpos, ypos)
     
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -457,38 +444,19 @@ class MainWindow(QtWidgets.QMainWindow):
             event.ignore()
             
     def dropEvent(self, event):
-        global viewer
-
         file_name = [u.toLocalFile() for u in event.mimeData().urls()][0]
-        viewer.bvh_renderer.set_bvh(BvhMotion(file_name))
-        for joint in viewer.bvh_renderer.get_bvh().joint_list:
+
+        self.viewer.bvh_renderer.set_bvh(BvhMotion(file_name))
+        for joint in self.viewer.bvh_renderer.get_bvh().joint_list:
             self.joint_list.addItem(joint)
         
-        self.time_slider.setRange(0, viewer.bvh_renderer.get_frame_num()-1)
+        self.time_slider.setRange(0, self.viewer.bvh_renderer.get_frame_num()-1)
         self.frame_timer.stop()
-        self.frame_timer.setInterval(int(viewer.bvh_renderer.get_bvh().frame_time * 1000))
+        self.frame_timer.setInterval(int(self.viewer.bvh_renderer.get_bvh().frame_time * 1000))
         self.frame_timer.start()
 
     def update_frame(self):
-        global viewer
-        self.time_slider.setValue(viewer.bvh_renderer.cur_frame)
-        if viewer.bvh_renderer.animating_mode:
-            self.time_input.setText(str(viewer.bvh_renderer.cur_frame))
-        viewer.bvh_renderer.set_next_frame()
-        
-##################################################################
-def main():
-    global viewer, win
-    bvh_motion = None
-    viewer = Viewer(bvh_motion)
-
-    app = QtWidgets.QApplication(sys.argv)
-
-    win = MainWindow()
-    win.show()
-
-    sys.exit(app.exec_())
-
-if __name__ == "__main__":
-    main()
-    
+        self.time_slider.setValue(self.viewer.bvh_renderer.cur_frame)
+        if self.viewer.bvh_renderer.animating_mode:
+            self.time_input.setText(str(self.viewer.bvh_renderer.cur_frame))
+        self.viewer.bvh_renderer.set_next_frame()

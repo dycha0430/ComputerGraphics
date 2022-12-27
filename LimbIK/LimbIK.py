@@ -1,7 +1,7 @@
 from OpenGL.GL import *
 import numpy as np
 import Util as util
-from KeyJoint import KeyJoint, Step
+from LimbIK.KeyJoint import KeyJoint, Step
 
 
 class LimbIK:
