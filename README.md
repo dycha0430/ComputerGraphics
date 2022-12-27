@@ -10,3 +10,4 @@ Click Image
 - WASD+QE : Move character joint by LimbIK
 - IJKL+UO : Move particle pointer
 - Shift : Create particle at pointer's position
+- Other operations are possible through the UI!!
