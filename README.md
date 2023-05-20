@@ -1,5 +1,5 @@
-# Bvh Motion Viewer Projcet
-- Limb IK & Particle dynamics implemented.
+# Bvh Motion Viewer Project
+- Limb IK + Motion Warping & Particle dynamics implemented.
 
 ## Play video
 Click Image  
